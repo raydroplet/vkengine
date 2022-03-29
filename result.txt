@@ -1,0 +1,143 @@
+[1mdevice.hpp:64:1: [31mstyle:[39m The class 'QueueFamily' does not declare a constructor although it has private member variables which likely require initialization. [noConstructor][0m
+class QueueFamily
+^
+[1mwindow.hpp:11:5: [31mstyle:[39m Class 'Window' has a constructor with 1 argument that is not explicit. [noExplicitConstructor][0m
+    Window(EventRelayer& relayer);
+    ^
+[1mdevice.hpp:117:3: [31mstyle:[39m Class 'Device' has a constructor with 1 argument that is not explicit. [noExplicitConstructor][0m
+  Device(Window& window);
+  ^
+[1meventListeners.hpp:171:36: [31mperformance:[39m Searching before insertion is not necessary. Instead of 'm_listeners[EventType::ID]=new EventListener' consider using 'm_listeners.try_emplace(EventType::ID, new EventListener);'. [stlFindInsert][0m
+      m_listeners[EventType::ID] = new EventListener<EventType>;
+                                   ^
+[1meventListeners.hpp:104:16: [31mstyle:[39m Unused variable: signature [unusedVariable][0m
+    for(auto& [signature, callback] : m_callbacks)
+               ^
+[1meventListeners.hpp:133:18: [31mstyle:[39m Unused variable: signature [unusedVariable][0m
+      for(auto& [signature, callback] : m_callbacks)
+                 ^
+[1mmultilist.hpp:52:3: [31mstyle:[39m Class 'multilist' has a constructor with 1 argument that is not explicit. [noExplicitConstructor][0m
+  multilist(int blockSize);
+  ^
+[1mecs.cpp:49:58: [31mperformance:[39m Function parameter 's' should be passed by const reference. [passedByValue][0m
+  void EntityManager::setSignature(EntityID e, Signature s)
+                                                         ^
+[1mecs.cpp:96:78: [31mperformance:[39m Function parameter 'entitySignature' should be passed by const reference. [passedByValue][0m
+  void SystemManager::notifyEntitySignatureChange(EntityID entity, Signature entitySignature)
+                                                                             ^
+[1mecs.cpp:99:22: [31mstyle:[39m Variable 'id' is not assigned a value. [unassignedVariable][0m
+    for(const auto& [id, system] : m_systems)
+                     ^
+[1minput.hpp:30:5: [31mstyle:[39m Class 'KeyboardInput' has a constructor with 1 argument that is not explicit. [noExplicitConstructor][0m
+    KeyboardInput(Coordinator& coord);
+    ^
+[1mmodelManager.hpp:17:5: [31mstyle:[39m Class 'ModelManager' has a constructor with 1 argument that is not explicit. [noExplicitConstructor][0m
+    ModelManager(Device& device);
+    ^
+[1mmain.cpp:11:3: [31mstyle:[39m Exception should be caught by reference. [catchExceptionByValue][0m
+  catch(std::exception e)
+  ^
+[1mmodelManager.cpp:38:18: [31mstyle:[39m Consider using std::accumulate algorithm instead of a raw loop. [useStlAlgorithm][0m
+      bufferSize += sizeof(info.vertices3d[0]) * info.vertices3d.size();
+                 ^
+[1mpipeline.cpp:261:18: [31mstyle:[39m Variable 'dynamicState' is reassigned a value before the old one has been used. [redundantAssignment][0m
+    dynamicState = other.dynamicState;
+                 ^
+[1mpipeline.cpp:257:18: [2mnote:[0m dynamicState is assigned
+    dynamicState = other.dynamicState;
+                 ^
+[1mpipeline.cpp:261:18: [2mnote:[0m dynamicState is overwritten
+    dynamicState = other.dynamicState;
+                 ^
+[1mprogram.cpp:5:43: [31mstyle:[39m Parameter 'event' can be declared with const. However it seems that 'foo' is a callback function, if 'event' is declared with const you might also need to cast function pointer(s). [constParameterCallback][0m
+  void Program::foo(event::WindowResized& event)
+                                          ^
+[1mprogram.cpp:29:70: [2mnote:[0m You might need to cast the function pointer here
+    m_eventRelayer.setCallback<event::WindowResized>(this, &Program::foo);
+                                                                     ^
+[1mprogram.cpp:5:43: [2mnote:[0m Parameter 'event' can be declared with const
+  void Program::foo(event::WindowResized& event)
+                                          ^
+[1mprogram.cpp:121:34: [31mstyle:[39m Variable 'indices' is assigned a value that is never used. [unreadVariable][0m
+    std::vector<uint32_t> indices{0, 1, 2, 2, 3, 0};
+                                 ^
+[1mprogram.cpp:122:44: [31mstyle:[39m Variable 'vertices2D' is assigned a value that is never used. [unreadVariable][0m
+    std::vector<Model::Vertex2D> vertices2D{
+                                           ^
+[1mrenderSystem.cpp:94:71: [31mstyle:[39m Parameter 'event' can be declared with const. However it seems that 'recreateGraphicsPipeline' is a callback function, if 'event' is declared with const you might also need to cast function pointer(s). [constParameterCallback][0m
+  void RenderSystem::recreateGraphicsPipeline(event::InvalidPipeline& event)
+                                                                      ^
+[1mrenderSystem.cpp:10:59: [2mnote:[0m You might need to cast the function pointer here
+    context.eventRelayer.setCallback(this, &RenderSystem::recreateGraphicsPipeline);
+                                                          ^
+[1mrenderSystem.cpp:94:71: [2mnote:[0m Parameter 'event' can be declared with const
+  void RenderSystem::recreateGraphicsPipeline(event::InvalidPipeline& event)
+                                                                      ^
+[1mrenderSystem.cpp:37:64: [31mstyle:[39m Variable 'uboLayoutBindings' is assigned a value that is never used. [unreadVariable][0m
+    std::vector<VkDescriptorSetLayoutBinding> uboLayoutBindings{Model::UniformBufferObject::getDescriptorSetLayoutBinding()};
+                                                               ^
+[1mrenderSystem.cpp:104:29: [31mstyle:[39m Variable 'descriptorPoolSizes' is assigned a value that is never used. [unreadVariable][0m
+    auto descriptorPoolSizes{Model::UniformBufferObject::getDescriptorPoolSize(swapchainImageCount)};
+                            ^
+[1mrenderer.cpp:60:21: [31mstyle:[39m Consider using std::fill or std::generate algorithm instead of a raw loop. [useStlAlgorithm][0m
+      commandBuffer = nullptr;
+                    ^
+[1mswapchain.cpp:143:26: [31mstyle:[39m Variable 'm_info.surfaceFormat' is reassigned a value before the old one has been used. [redundantAssignment][0m
+    m_info.surfaceFormat = m_details.formats[0];
+                         ^
+[1mswapchain.cpp:140:30: [2mnote:[0m m_info.surfaceFormat is assigned
+        m_info.surfaceFormat = surfaceFormat;
+                             ^
+[1mswapchain.cpp:143:26: [2mnote:[0m m_info.surfaceFormat is overwritten
+    m_info.surfaceFormat = m_details.formats[0];
+                         ^
+[1mwindow.cpp:5:11: [31mwarning:[39m Member variable 'Window::m_window' is not initialized in the constructor. [uninitMemberVar][0m
+  Window::Window(EventRelayer& relayer) :
+          ^
+[1mallocator.cpp:66:0: [31mstyle:[39m The function 'allocateBuffers' is never used. [unusedFunction][0m
+
+^
+[1mpipeline.cpp:209:0: [31mstyle:[39m The function 'bindDescriptorSets' is never used. [unusedFunction][0m
+
+^
+[1mmodel.cpp:58:0: [31mstyle:[39m The function 'bindIndexBuffer' is never used. [unusedFunction][0m
+
+^
+[1mcamera.cpp:137:0: [31mstyle:[39m The function 'broken_setViewXYZ' is never used. [unusedFunction][0m
+
+^
+[1mrenderSystem.cpp:99:0: [31mstyle:[39m The function 'createDescriptorPool' is never used. [unusedFunction][0m
+
+^
+[1mrenderSystem.cpp:35:0: [31mstyle:[39m The function 'createDescriptorSetLayout' is never used. [unusedFunction][0m
+
+^
+[1mrenderSystem.cpp:118:0: [31mstyle:[39m The function 'createDescriptorSets' is never used. [unusedFunction][0m
+
+^
+[1mmodel.cpp:10:0: [31mstyle:[39m The function 'createIndexBuffer' is never used. [unusedFunction][0m
+
+^
+[1mmodel.cpp:70:0: [31mstyle:[39m The function 'drawIndexed' is never used. [unusedFunction][0m
+
+^
+[1mswapchain.cpp:333:0: [31mstyle:[39m The function 'hasStencilComponent' is never used. [unusedFunction][0m
+
+^
+[1mdevice.cpp:161:0: [31mstyle:[39m The function 'logMemoryInfo' is never used. [unusedFunction][0m
+
+^
+[1mmodelManager.cpp:119:0: [31mstyle:[39m The function 'modelVertices' is never used. [unusedFunction][0m
+
+^
+[1mcomponents.cpp:29:0: [31mstyle:[39m The function 'slow_XYZ_mat4' is never used. [unusedFunction][0m
+
+^
+[1mcomponents.cpp:5:0: [31mstyle:[39m The function 'slow_mat2' is never used. [unusedFunction][0m
+
+^
+[1mcomponents.cpp:16:0: [31mstyle:[39m The function 'slow_mat4' is never used. [unusedFunction][0m
+
+^
+[1mnofile:0:0: [31minformation:[39m Cppcheck cannot find all the include files (use --check-config for details) [missingIncludeSystem][0m
+

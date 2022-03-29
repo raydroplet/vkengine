@@ -1,0 +1,286 @@
+#pragma once
+
+#include "core.hpp"
+
+namespace vke
+{
+  template<typename T>
+  inline static decltype(typeid(void).hash_code()) typeID()
+  {
+    return typeid(T).hash_code();
+  }
+
+  // Can hear a single event type and send it to multiple classes
+  template<typename EventType>
+  class EventListener
+  {
+    using Object = void*;
+
+  public:
+    template<typename C>
+    void setCallback(C* object, void (C::*fn)(EventType&));
+
+    template<typename C>
+    void unbind(C* object);
+
+    void queue(EventType& event) const;
+    void queue(EventType&& event) const;
+    void dispatch();
+
+    void operator()(EventType& event) const;
+    inline void operator()(EventType&& event) const;
+
+    // for the up-to-date event
+    void hold(EventType& event);
+    void hold(EventType&& event);
+    void drop();
+
+    EventListener() :
+        m_event{new EventType} {}
+
+    ~EventListener()
+    {
+      delete m_event;
+    }
+
+  private:
+    std::unordered_map<Object, std::function<void(EventType&)>> m_callbacks;
+    std::vector<EventType> m_eventQueue;
+    EventType* m_event{};
+  };
+
+  // can hear multiple event types from a certain category and send them to multiple classes
+  template<typename EventCategory>
+  class MultiEventListener
+  {
+    // another option would be to use a enum class and give each event struct its own id
+    using EventTypeCode = decltype(typeid(void).hash_code());
+    using EventListenerPtr = void*;
+
+  public:
+    template<typename EventType, typename C>
+    requires std::derived_from<EventType, EventCategory>
+    void setCallback(C* object, void (C::*fn)(EventType&));
+
+    template<typename EventType, typename C>
+    void unbind(C* object) const;
+
+    template<typename EventType>
+    requires std::derived_from<EventType, EventCategory>
+    void call(EventType& event) const;
+
+    template<typename EventType>
+    requires std::derived_from<EventType, EventCategory>
+    inline void call(EventType&& event) const;
+
+    template<typename EventType>
+    void queue(EventType& event) const;
+
+    template<typename EventType>
+    inline void queue(EventType&& event) const;
+
+    template<typename EventType>
+    void dispatch() const;
+
+    template<typename EventType>
+    void hold(EventType& event);
+
+    template<typename EventType>
+    void hold(EventType&& event);
+
+    template<typename EventType>
+    void drop();
+
+    ~MultiEventListener();
+
+  private:
+    template<typename EventType>
+    requires std::derived_from<EventType, EventCategory>
+    void operator()(EventType& event) const;
+
+    template<typename EventType>
+    inline EventListener<EventType>* listener()
+    {
+      return reinterpret_cast<EventListener<EventType>*>(m_eventListeners[typeID<EventType>()]);
+    }
+
+  private:
+    std::unordered_map<EventTypeCode, EventListenerPtr> m_eventListeners;
+  };
+
+  template<typename EventCategory>
+  class EventReceiver
+  {
+    void receive();
+    void bindListeners();
+  };
+
+  // EventListener
+  template<typename EventType>
+  template<typename C>
+  void EventListener<EventType>::setCallback(C* object, void (C::*fn)(EventType&))
+  {
+    assert("Binding the same class again" && m_callbacks.find(object) == m_callbacks.end());
+
+    m_callbacks[object] = (std::bind(fn, object, std::placeholders::_1));
+  }
+
+  template<typename EventType>
+  template<typename C>
+  void EventListener<EventType>::unbind(C* object)
+  {
+    m_callbacks.erase(object);
+  }
+
+  template<typename EventType>
+  void EventListener<EventType>::operator()(EventType& event) const
+  {
+    for(auto& [signature, callback] : m_callbacks)
+    {
+      callback(event);
+    }
+  }
+
+  template<typename EventType>
+  inline void EventListener<EventType>::operator()(EventType&& event) const
+  {
+    operator()(event);
+  }
+
+  template<typename EventType>
+  void EventListener<EventType>::queue(EventType& event) const
+  {
+    m_eventQueue.push_back(event);
+  }
+
+  template<typename EventType>
+  void EventListener<EventType>::queue(EventType&& event) const
+  {
+    queue(event);
+  }
+
+  template<typename EventType>
+  void EventListener<EventType>::dispatch()
+  {
+    for(auto& event : m_eventQueue)
+    {
+      for(auto& [signature, callback] : m_callbacks)
+      {
+        callback(event);
+      }
+    }
+
+    // the up-to-date event
+    callback(m_event);
+
+    m_eventQueue.clear();
+  }
+
+  template<typename EventType>
+  void EventListener<EventType>::hold(EventType& event)
+  {
+    *m_event = event;
+  }
+
+  template<typename EventType>
+  inline void EventListener<EventType>::hold(EventType&& event)
+  {
+    hold(event);
+  }
+
+  template<typename EventType>
+  void EventListener<EventType>::drop()
+  {
+    delete m_event;
+    m_event = nullptr;
+  }
+
+
+  // MultiEventListener
+  template<typename EventCategory>
+  template<typename EventType, typename C>
+  requires std::derived_from<EventType, EventCategory>
+  void MultiEventListener<EventCategory>::setCallback(C* object, void (C::*fn)(EventType&))
+  {
+    // checks if a listener for this event already exits. if not, create one
+    if(m_eventListeners.find(typeID<EventType>()) == m_eventListeners.end())
+      m_eventListeners[typeID<EventType>()] = new EventListener<EventType>{};
+
+    listener<EventType>()->bind(object, fn);
+  }
+
+  template<typename EventCategory>
+  template<typename EventType, typename C>
+  void MultiEventListener<EventCategory>::unbind(C* object) const
+  {
+    assert("Unbinding a not binded event." && m_eventListeners.find(typeID<EventType>()) != m_eventListeners.end());
+    listener<EventType>()->unbind(object);
+  }
+
+  template<typename EventCategory>
+  template<typename EventType>
+  requires std::derived_from<EventType, EventCategory>
+  void MultiEventListener<EventCategory>::call(EventType& event) const
+  {
+    operator()(event);
+  }
+
+  template<typename EventCategory>
+  template<typename EventType>
+  requires std::derived_from<EventType, EventCategory>
+  inline void MultiEventListener<EventCategory>::call(EventType&& event) const
+  {
+    operator()(event);
+  }
+
+  template<typename EventCategory>
+  template<typename EventType>
+  void MultiEventListener<EventCategory>::queue(EventType& event) const
+  {
+    assert("Queuing unbinded event." && m_eventListeners.find(typeID<EventType>()) != m_eventListeners.end());
+    listener<EventType>()->queue(event);
+  }
+
+  template<typename EventCategory>
+  template<typename EventType>
+  inline void MultiEventListener<EventCategory>::queue(EventType&& event) const
+  {
+    queue(event);
+  }
+
+  template<typename EventCategory>
+  template<typename EventType>
+  void MultiEventListener<EventCategory>::dispatch() const
+  {
+    assert("Dispatching unbinded event." && m_eventListeners.find(typeID<EventType>()) != m_eventListeners.end());
+    listener<EventType>()->dispatch();
+  }
+
+  template<typename EventCategory>
+  template<typename EventType>
+  void MultiEventListener<EventCategory>::hold(EventType& event)
+  {
+    listener<EventType>()->hold(event);
+  }
+
+  template<typename EventCategory>
+  template<typename EventType>
+  inline void MultiEventListener<EventCategory>::hold(EventType&& event)
+  {
+    hold(event);
+  }
+
+  template<typename EventCategory>
+  template<typename EventType>
+  void MultiEventListener<EventCategory>::drop()
+  {
+    listener<EventType>()->drop();
+  }
+
+  template<typename EventCategory>
+  MultiEventListener<EventCategory>::~MultiEventListener()
+  {
+    for(auto& [eventType, eventListener] : m_eventListeners)
+      delete listener<EventCategory>(eventListener);
+  }
+} // namespace vke

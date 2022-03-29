@@ -1,0 +1,30 @@
+CXXFLAGS = -std=c++20 -g
+LDFLAGS = -lglfw -lvulkan -ldl -lpthread
+WARN= -pedantic-errors -Wall -Wextra -Weffc++ -fsanitize=undefined -Wno-unused-parameter #-Werror -Wsign-conversion
+
+#-O3
+#-lx11 -lxxf86vm -lxrandr -lxi
+# -flto?	// link time optimizations
+
+#bin: *.cpp *.hpp shaders/frag.spv shaders/vert.spv Makefile
+bin: *.cpp *.hpp shaders/frag.spv shaders/vert.spv
+	clang++ $(CXXFLAGS) -o bin *.cpp $(LDFLAGS) $(WARN)
+
+shaders/frag.spv: shaders/shader.frag
+	glslc shaders/shader.frag -o shaders/frag.spv
+
+shaders/vert.spv: shaders/shader.vert
+	glslc shaders/shader.vert -o shaders/vert.spv
+
+linter: Makefile
+	rm -f bin
+	bear -- make
+
+
+.PHONY: run clean
+
+run: bin
+	./bin
+
+clear:
+	rm -f bin

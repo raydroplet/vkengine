@@ -1,0 +1,65 @@
+CXX         = clang++
+CXXFLAGS    = -c -g -std=c++20
+WARNINGS    = -pedantic-errors -Wall -Wextra -Weffc++ -fsanitize=undefined -Wno-unused-parameter
+LDFLAGS     = -fsanitize=undefined
+LDLIBS      = -lglfw -lvulkan -ldl -lpthread
+DEPS        = $(wildcard *.hpp)
+EXECUTABLE  = bin
+DEFINES     = -DGLFW_INCLUDE_VULKAN -DGLM_FORCE_RADIANS -DGLM_FORCE_DEPTH_ZERO_TO_ONE
+# -DGLM_FORCE_DEFAULT_ALIGNED_GENTYPES # be explicit with alignas() instead
+
+
+
+#-Werror -Wsign-conversion
+#-O3
+#-lx11 -lxxf86vm -lxrandr -lxi
+# -flto?	// link time optimizations
+
+#bin: *.cpp *.hpp shaders/frag.spv shaders/vert.spv
+#	clang++ $(CCFLAGS) -o bin *.cpp $(LDFLAGS) $(WARN)
+
+BuildDir=build
+ShaderDir=shaders
+
+#pathsubt <<<<<<<
+TranslationUnits:= $(shell find -type f -name "*.cpp") #$(wildcard *.cpp)
+Objects:= $(addprefix $(BuildDir)/,$(TranslationUnits:.cpp=.o))
+
+
+FragShaders:= $(shell find $(ShaderDir) -type f -name "*.frag") #(wildcard $(ShaderDir)/*.frag)
+FragShadersObjs:= $(addsuffix .spv, $(addprefix $(BuildDir)/, $(FragShaders)))
+
+VertShaders:= $(shell find $(ShaderDir) -type f -name "*.vert") #$(wildcard $(ShaderDir)/*.vert)
+VertShadersObjs:= $(addsuffix .spv, $(addprefix $(BuildDir)/, $(VertShaders)))
+
+ShaderObjs:= $(FragShadersObjs) $(VertShadersObjs)
+
+
+.PHONY: all
+all: $(ShaderObjs) $(EXECUTABLE)
+	@echo 'all' done.
+
+$(EXECUTABLE): $(Objects)
+	$(CXX) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+
+$(BuildDir)/%.o: %.cpp $(DEPS)
+	$(CXX) $(CXXFLAGS) $(WARNINGS) $(DEFINES) $< -o $@
+
+
+$(VertShadersObjs): $(VertShaders)
+	glslc $< -o $@
+
+$(FragShadersObjs): $(FragShaders)
+	glslc $< -o $@
+
+#shaders/frag.spv: shaders/shader.frag
+#	glslc shaders/shader.frag -o shaders/frag.spv
+#shaders/vert.spv: shaders/shader.vert
+#	glslc shaders/shader.vert -o shaders/vert.spv
+
+.PHONY: clean run
+clean:
+	rm -f $(Objects) $(ShaderObjs) $(EXECUTABLE)
+
+run: $(ShaderObjs) $(EXECUTABLE)
+	./bin

@@ -1,0 +1,27 @@
+#pragma once
+
+#include <algorithm>
+#include <array>
+#include <bitset>
+#include <cassert>
+#include <chrono>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <limits>
+#include <memory>
+#include <optional>
+#include <queue>
+#include <set>
+#include <span>
+#include <stdexcept>
+#include <thread>
+#include <type_traits>
+#include <typeinfo>
+#include <unordered_map>
+#include <vector>
