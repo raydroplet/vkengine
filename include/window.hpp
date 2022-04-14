@@ -18,6 +18,11 @@ namespace vke
     inline void poolEvents() { glfwPollEvents(); }
 
     static void framebufferResizeCallback(GLFWwindow*, int width, int height);
+    static void cursorCallback(GLFWwindow* glfwWindow, double posX, double posY);
+
+    std::pair<double, double> cursorPos();
+    int width() { return m_width; }
+    int height() { return m_height; }
 
     VkSurfaceKHR surface() const { return m_surface; }
     operator GLFWwindow*() const { return m_window; }
@@ -37,6 +42,9 @@ namespace vke
 
     int m_width{320};
     int m_height{180};
+
+    double m_cursorPosY{};
+    double m_cursorPosX{};
 
     int m_pixelsWidth{};
     int m_pixelsHeight{};

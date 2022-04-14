@@ -2,7 +2,7 @@
 
 #include "model.hpp"
 
-namespace vke::component
+namespace vke::cmp
 {
   struct Transform2D
   {
@@ -20,22 +20,33 @@ namespace vke::component
     glm::vec3 rotation{}; // Y points up
 
     glm::mat4 mat4() const;
+    glm::mat4 optimized_mat4() const; //TODO: rename the method name
 
-    // ZYX to rotate the axis
-    // XYZ to rotate in the axis
-    // glm::mat4 XZY_mat4() const { throw std::runtime_error("not implemented"); }
-    glm::mat4 XYZ_mat4() const;
-    // glm::mat4 YXZ_mat4() const;
-    // glm::mat4 YZX_mat4() const;
-    // glm::mat4 ZYX_mat4() const;
-    // glm::mat4 ZXY_mat4() const;
+    glm::mat3 normalMatrix();
+  };
+
+  // for shared components?
+  class Common
+  {
+  public:
+    Model* model() { return m_model; }
+    void setModel(Model* model) { m_model = model; }
+
+  private:
+    Model* m_model{};
   };
 
   struct Color
   {
     glm::vec3 color{1.f, 1.f, 1.f};
-    std::vector<Model::Vertex3D> vertices{};
+    std::vector<Model::Vertex> vertices{};
 
     operator glm::vec3();
+  };
+
+  struct PointLight
+  {
+    glm::vec3 position{};
+    glm::vec3 intensity{};
   };
 } // namespace vke::component

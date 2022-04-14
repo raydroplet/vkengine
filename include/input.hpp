@@ -20,21 +20,25 @@ namespace vke
       int moveUp{GLFW_KEY_SPACE};
       int moveDown{GLFW_KEY_LEFT_SHIFT};
 
-      int lookLeft{GLFW_KEY_LEFT};
-      int lookRight{GLFW_KEY_RIGHT};
-      int lookUp{GLFW_KEY_UP};
-      int lookDown{GLFW_KEY_DOWN};
+      int lookLeft{GLFW_KEY_J};
+      int lookRight{GLFW_KEY_SEMICOLON};
+      int lookUp{GLFW_KEY_L};
+      int lookDown{GLFW_KEY_K};
     };
 
   public:
-    KeyboardInput(Coordinator& coord);
+    KeyboardInput(Coordinator& coord, Window& window);
+    void moveInPlaneXZ(TimeStep ts, EntityID cameraEntity);
 
-    void moveInPlaneXZ(GLFWwindow* window, TimeStep ts, EntityID cameraEntity);
+    //TODO:
+    //void moveFlying(TimeStep ts, EntityID cameraEntity);
 
   private:
+    Window& m_window;
     Coordinator& m_ecs;
     KeyMappings m_keys{};
-    float m_moveSpeed{1.f};
-    float m_lookSpeed{1.5f};
+    float m_moveSpeed{1.25f};
+    float m_lookSpeed{0.45f};
+    std::pair<double, double> lastCursorPos{};
   };
 }; // namespace vke

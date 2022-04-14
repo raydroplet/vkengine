@@ -51,7 +51,9 @@ namespace vke
   struct SimplePushConstantData
   {
     glm::mat4 transform{1.f}; // it seems this can not be a mat3, otherwise the shader doesn't work
-    //    glm::vec2 offset{};
-    alignas(16) glm::vec3 color{1.f, 1.f, 1.f};
+    glm::mat4 normalMatrix{1.f};
+    //glm::mat4 modelMatrix{1.f};
+    // glm::vec2 offset{};
+    // alignas(16) glm::vec3 color{1.f, 1.f, 1.f};
   };
 } // namespace vke

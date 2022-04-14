@@ -22,7 +22,6 @@ namespace vke
   {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-    // glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
     m_window = glfwCreateWindow(m_width, m_height, "", nullptr, nullptr);
     glfwGetFramebufferSize(m_window, &m_pixelsWidth, &m_pixelsHeight);
@@ -30,6 +29,16 @@ namespace vke
 
     glfwSetWindowUserPointer(m_window, this);
     glfwSetFramebufferSizeCallback(m_window, &framebufferResizeCallback);
+
+    ////////////////////////////
+    // tell GLFW that it should hide the cursor and capture it.
+    glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetCursorPosCallback(m_window, &Window::cursorCallback); // called each time the mouse moves
+    glfwGetCursorPos(m_window, &m_cursorPosX, &m_cursorPosY);
+    ////////////////////////////
+
+    // glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+
   }
 
   bool Window::shouldClose()
@@ -54,5 +63,17 @@ namespace vke
     window->m_pixelsWidth = width;
     window->m_pixelsHeight = height;
 //    window->m_eventRelayer.queue(event::WindowResized{width, height});
+  }
+
+  void Window::cursorCallback(GLFWwindow* glfwWindow, double posX, double posY)
+  {
+    Window* window{reinterpret_cast<Window*>(glfwGetWindowUserPointer(glfwWindow))};
+    window->m_cursorPosX = posX;
+    window->m_cursorPosY = posY;
+  }
+
+  std::pair<double, double> Window::cursorPos()
+  {
+    return {m_cursorPosX, m_cursorPosY};
   }
 } // namespace vke

@@ -1,14 +1,74 @@
 #include "model.hpp"
 
+namespace std
+{
+  template<>
+  struct hash<vke::Model::Vertex>
+  {
+    std::size_t operator()(vke::Model::Vertex const& vertex) const
+    {
+      std::size_t seed{};
+      vke::hash_combine(&seed, vertex.position, vertex.color, vertex.normal, vertex.uv);
+      return seed;
+    }
+  };
+} // namespace std
+
 namespace vke
 {
-  Model::Model(Device& device, const Buffer& buffer) :
-      m_device{device}, c_buffer{buffer}
+  Model::Model(Device& device, Builder& builder) :
+      m_device{device}
   {
+    createVertexBuffer(builder.vertices, builder.vertexBuffer, builder.vertexBufferMemory);
+    createIndexBuffer(builder.indices, builder.indexBuffer, builder.indexBufferMemory);
   }
 
-  void Model::createIndexBuffer(std::span<uint32_t> indices, uint32_t memoryOffset)
+  Model::~Model()
   {
+    vkDestroyBuffer(m_device, m_vertexBuffer, nullptr);
+    vkFreeMemory(m_device, m_vertexBufferMemory.memory, nullptr);
+
+    vkDestroyBuffer(m_device, m_indexBuffer, nullptr);
+    vkFreeMemory(m_device, m_indexBufferMemory.memory, nullptr);
+  }
+
+  void Model::createVertexBuffer(std::span<Model::Vertex> vertices, Buffer buffer, Memory memory)
+  {
+    // assert((std::is_class<Vertex2D>(vertices[0]) || std::is_class<Vertex>(vertices[0])) && "Must be a Vertex type.");
+    // assert((typeid(vertices).hash_code() == typeid(Vertex2D).hash_code()) || (typeid(vertices).hash_code() == typeid(Vertex).hash_code()));
+
+    assert(vertices.size() >= 3 && "Vertex count must be at least 3");
+
+    m_vertexBuffer.buffer = buffer.buffer;
+    m_vertexBufferMemory = memory;
+    m_verticesCount = vertices.size();
+    VkDeviceSize bufferSize{sizeof(vertices[0]) * vertices.size()};
+
+    Buffer stagingBuffer;
+    Memory stagingBufferMemory;
+
+    MemAllocator::createBuffer(m_device, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stagingBuffer);
+    MemAllocator::allocateBuffer(m_device, stagingBuffer, stagingBufferMemory, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+    MemAllocator::mapBufferMemory(m_device, stagingBufferMemory.memory, bufferSize, 0, vertices.data());
+    //    MemAllocator::mapBufferMemory(m_device, stagingBufferMemory, indexBufferSize, vertexBufferSize, indices.data());
+
+    MemAllocator::copyBuffer(m_device, stagingBuffer, 0, m_vertexBuffer, buffer.memoryOffset, bufferSize);
+
+    vkDestroyBuffer(m_device, stagingBuffer, nullptr);
+    vkFreeMemory(m_device, stagingBufferMemory.memory, nullptr);
+  }
+
+  void Model::createIndexBuffer(std::span<uint32_t> indices, Buffer buffer, Memory memory)
+  {
+    m_hasIndexBuffer = indices.size() > 0;
+
+    if(!m_hasIndexBuffer)
+      return;
+
+    m_indexBuffer.buffer = buffer.buffer;
+    m_indexBufferMemory = memory;
+    m_indicesCount = indices.size();
     VkDeviceSize bufferSize{sizeof(indices[0]) * indices.size()};
 
     Buffer stagingBuffer;
@@ -17,13 +77,13 @@ namespace vke
     MemAllocator::createBuffer(m_device, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stagingBuffer);
     MemAllocator::allocateBuffer(m_device, stagingBuffer, stagingBufferMemory, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-    MemAllocator::mapBufferMemory(m_device, stagingBufferMemory, bufferSize, memoryOffset, indices.data());
+    MemAllocator::mapBufferMemory(m_device, stagingBufferMemory.memory, bufferSize, 0, indices.data());
     //    MemAllocator::mapBufferMemory(m_device, stagingBufferMemory, indexBufferSize, vertexBufferSize, indices.data());
 
-    MemAllocator::copyBuffer(m_device, stagingBuffer, 0, c_buffer, memoryOffset, bufferSize);
+    MemAllocator::copyBuffer(m_device, stagingBuffer, 0, buffer, buffer.memoryOffset, bufferSize);
 
     vkDestroyBuffer(m_device, stagingBuffer, nullptr);
-    vkFreeMemory(m_device, stagingBufferMemory, nullptr);
+    vkFreeMemory(m_device, stagingBufferMemory.memory, nullptr);
   }
 
   /*
@@ -46,90 +106,72 @@ namespace vke
   }
   */
 
-  void Model::bindVertexBuffer(VkCommandBuffer commandBuffer)
+  void Model::bindBuffers(VkCommandBuffer commandBuffer)
   {
     assert(m_verticesCount && "Vertex buffer not created.");
-    VkBuffer vertexBuffers[] = {c_buffer};
-    VkDeviceSize offsets[]{m_vertexBufferOffset};
+
+    VkBuffer vertexBuffers[] = {m_vertexBuffer.buffer};
+    VkDeviceSize offsets[]{m_vertexBuffer.memoryOffset};
 
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-  }
 
-  void Model::bindIndexBuffer(VkCommandBuffer commandBuffer)
-  {
-    assert(m_indicesCount && "Index buffer not created.");
-    vkCmdBindIndexBuffer(commandBuffer, c_buffer, m_indexBufferOffset, VK_INDEX_TYPE_UINT32);
-  }
+    if(m_hasIndexBuffer)
+      vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer, m_indexBuffer.memoryOffset, VK_INDEX_TYPE_UINT32);
+  };
 
   void Model::draw(VkCommandBuffer commandBuffer)
   {
-    assert(!m_indicesCount && "Using a index buffer, drawIndexed() instead.");
-    vkCmdDraw(commandBuffer, m_verticesCount, 1, 0, 0);
+    // assert(!m_indicesCount && "Using a index buffer, drawIndexed() instead.");
+    // assert(m_indicesCount && "Index buffer not created, draw() instead.");
+
+    if(m_hasIndexBuffer)
+    {
+      vkCmdDrawIndexed(commandBuffer, m_indicesCount, 1, 0, 0, 0);
+    }
+    else
+    {
+      vkCmdDraw(commandBuffer, m_verticesCount, 1, 0, 0);
+    }
   }
 
-  void Model::drawIndexed(VkCommandBuffer commandBuffer)
-  {
-    assert(m_indicesCount && "Index buffer not created, draw() instead.");
-    vkCmdDrawIndexed(commandBuffer, m_indicesCount, 1, 0, 0, 0);
-  }
-
-  std::vector<VkVertexInputAttributeDescription> Model::Vertex2D::getVertexInputAttributeDescription()
+  std::vector<VkVertexInputAttributeDescription> Model::Vertex::getVertexInputAttributeDescription()
   {
     return {
       {
         .location = 0, //  references the shader location
         .binding = 0,  //  which binding the per-vertex data comes
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = offsetof(Vertex, position),
+      },
+      {
+        .location = 1,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = offsetof(Vertex, color),
+      },
+      {
+        .location = 2,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = offsetof(Vertex, normal),
+      },
+      {
+        .location = 3,
+        .binding = 0,
         .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(Vertex2D, pos),
-      },
-      {
-        .location = 1,
-        .binding = 0,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(Vertex2D, color),
+        .offset = offsetof(Vertex, uv),
       },
     };
   }
 
-  std::vector<VkVertexInputBindingDescription> Model::Vertex2D::getVertexInputBindingDescription()
+  std::vector<VkVertexInputBindingDescription> Model::Vertex::getVertexInputBindingDescription()
   {
     // All of our per-vertex data is packed together in one array, so we're only going to have one binding
     return {
       {
         // VkVertexInputBindingDescription bindingDescription
         .binding = 0, // specifies the index of the binding in the array of bindings
-        .stride = sizeof(Vertex2D),
-        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
-      },
-    };
-  }
-
-  std::vector<VkVertexInputAttributeDescription> Model::Vertex3D::getVertexInputAttributeDescription()
-  {
-    return {
-      {
-        .location = 0, //  references the shader location
-        .binding = 0,  //  which binding the per-vertex data comes
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(Vertex3D, pos),
-      },
-      {
-        .location = 1,
-        .binding = 0,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(Vertex3D, color),
-      },
-    };
-  }
-
-  std::vector<VkVertexInputBindingDescription> Model::Vertex3D::getVertexInputBindingDescription()
-  {
-    // All of our per-vertex data is packed together in one array, so we're only going to have one binding
-    return {
-      {
-        // VkVertexInputBindingDescription bindingDescription
-        .binding = 0, // specifies the index of the binding in the array of bindings
-        .stride = sizeof(Vertex3D),
+        .stride = sizeof(Vertex),
         .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
       },
     };
@@ -158,7 +200,114 @@ namespace vke
     };
   }
 
-  /*
+  void Model::Builder::loadModel(std::filesystem::path path)
+  {
+    if(!std::filesystem::exists(path))
+      throw std::runtime_error("Invalid file path");
+
+    tinyobj::attrib_t attrib{};             // position, color, normal and texture coordinate data
+    std::vector<tinyobj::shape_t> shapes{}; // index values for each face element
+    std::vector<tinyobj::material_t> materials{};
+    std::string warn{}, err{};
+
+    if(!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path.c_str()))
+    {
+      throw std::runtime_error("[Failed to load model]" + warn + err);
+    }
+
+    vertices.clear();
+    indices.clear();
+
+    std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+    for(auto const& shape : shapes)
+    {
+      for(auto const& index : shape.mesh.indices)
+      {
+        Vertex vertex{};
+
+        // inexistent if -1
+        if(index.vertex_index >= 0)
+        {
+          // each vertexertex has 3 packed values
+          vertex.position = {
+            attrib.vertices[3 * index.vertex_index + 0],
+            attrib.vertices[3 * index.vertex_index + 1],
+            attrib.vertices[3 * index.vertex_index + 2],
+          };
+
+          // .obj doesn't support colors. This is possible through an unofficial extension for the file format, that puts RGB values after the XYZ vertex positions.
+
+          // attrib.color is always initialized to be the same size as attrib.vertices and filled with ones wherever a color is not provided in the obj file
+          vertex.color = {
+            attrib.colors[3 * index.vertex_index + 0],
+            attrib.colors[3 * index.vertex_index + 1],
+            attrib.colors[3 * index.vertex_index + 2],
+          };
+        }
+
+        if(index.normal_index >= 0)
+        {
+          vertex.normal = {
+            attrib.normals[3 * index.normal_index + 0],
+            attrib.normals[3 * index.normal_index + 1],
+            attrib.normals[3 * index.normal_index + 2],
+          };
+        }
+
+        if(index.texcoord_index >= 0)
+        {
+          vertex.uv = {
+            attrib.texcoords[2 * index.texcoord_index + 0],
+            attrib.texcoords[2 * index.texcoord_index + 1],
+          };
+        }
+
+        // For every vertex of the loaded file we check if he already exists on the map. If not then its index in the builder vertices vector is added to the map.
+        if(!uniqueVertices.contains(vertex))
+        {
+          uniqueVertices[vertex] = vertices.size();
+          vertices.push_back(vertex);
+        }
+
+        // Those unique indexes are then pushed into the indices vector.
+        indices.push_back(uniqueVertices[vertex]);
+      }
+    }
+  }
+
+///////////////////////////////////////
+#if 0
+  std::vector<VkVertexInputAttributeDescription> Vertex2D::getVertexInputAttributeDescription()
+  {
+    return {
+      {
+        .location = 0, //  references the shader location
+        .binding = 0,  //  which binding the per-vertex data comes
+        .format = VK_FORMAT_R32G32_SFLOAT,
+        .offset = offsetof(Vertex2D, position),
+      },
+      {
+        .location = 1,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = offsetof(Vertex2D, color),
+      },
+    };
+  }
+
+  std::vector<VkVertexInputBindingDescription> Vertex2D::getVertexInputBindingDescription()
+  {
+    // All of our per-vertex data is packed together in one array, so we're only going to have one binding
+    return {
+      {
+        // VkVertexInputBindingDescription bindingDescription
+        .binding = 0, // specifies the index of the binding in the array of bindings
+        .stride = sizeof(Vertex2D),
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+      },
+    };
+  }
+
   std::vector<VkDescriptorBufferInfo> Model::getDescriptorBufferInfo()
   {
     std::vector<VkDescriptorBufferInfo> descriptorBufferInfo;
@@ -236,6 +385,5 @@ namespace vke
     vkFreeMemory(m_device, m_uniformBuffersMemory, nullptr);
     createUniformBuffers(swapChainImageCount);
   }
-  */
-
+#endif
 } // namespace vke

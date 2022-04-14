@@ -1,4 +1,4 @@
-#include "program.hpp"
+#include "main.hpp"
 
 int main()
 {
@@ -6,9 +6,9 @@ int main()
   {
     vke::Program{}.run();
   }
-  catch(std::exception e)
+  catch(std::runtime_error e)
   {
-    std::cerr << e.what() << '.' << std::endl;
+    std::cerr << clr::red << "[Exception] " << clr::white << e.what() << '.' << std::endl;
   }
   catch(...)
   {

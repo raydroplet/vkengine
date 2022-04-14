@@ -25,15 +25,6 @@ namespace vke
   {
     VkDeviceMemory memory;
     VkDeviceSize size{};
-
-    operator VkDeviceMemory() const
-    {
-      return memory;
-    }
-    VkDeviceMemory* operator&()
-    {
-      return &memory;
-    }
   };
 
   struct MemoryInfo

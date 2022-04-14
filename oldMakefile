@@ -5,8 +5,8 @@ LDFLAGS     = -fsanitize=undefined
 LDLIBS      = -lglfw -lvulkan -ldl -lpthread
 DEPS        = $(wildcard *.hpp)
 EXECUTABLE  = bin
-DEFINES     = -DGLFW_INCLUDE_VULKAN -DGLM_FORCE_RADIANS -DGLM_FORCE_DEPTH_ZERO_TO_ONE
-# -DGLM_FORCE_DEFAULT_ALIGNED_GENTYPES # be explicit with alignas() instead
+DEFINES     = -DGLM_FORCE_RADIANS -DGLM_FORCE_DEPTH_ZERO_TO_ONE
+# -DGLFW_INCLUDE_VULKAN -DGLM_FORCE_DEFAULT_ALIGNED_GENTYPES # be explicit with alignas() instead
 
 
 

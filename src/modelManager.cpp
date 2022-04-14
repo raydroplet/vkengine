@@ -1,137 +1,104 @@
+#define TINYOBJLOADER_IMPLEMENTATION
 #include "modelManager.hpp"
 
 namespace vke
 {
-  ModelManager::ModelManager(Device& device) :
-      m_device{device}
+  ModelManager::ModelManager(Device& device, Coordinator& ecs) :
+      m_device{device},
+      m_ecs{ecs}
   {
   }
 
   ModelManager::~ModelManager()
   {
     m_models.clear();
-    vkDestroyBuffer(m_device, m_buffer, nullptr);
-    vkFreeMemory(m_device, m_memory, nullptr);
+    // vkDestroyBuffer(m_device, m_vertexBuffer, nullptr);
+    // vkFreeMemory(m_device, m_vertexMemory, nullptr);
+
+    // vkDestroyBuffer(m_device, m_indexBuffer, nullptr);
+    // vkFreeMemory(m_device, m_indexMemory, nullptr);
   }
 
-  void ModelManager::give(Model3DCreateInfo info)
+  void ModelManager::give(Model::Builder builder, std::vector<EntityID> entities)
   {
-    size_t index{m_models.size()};
+    assert("Empty model (no vertices)" && builder.vertices.size() > 0);
 
-    for(EntityID entity : info.entities)
-    {
-      m_modelIndexes[entity] = index;
-    }
+    //    size_t index{m_modelBuilders.size()};
+    //
+    //  for(EntityID entity : entities)
+    //  {
+    //    m_modelIndexes[entity] = index;
+    //  }
 
-    m_model3DCreateInfo.push_back(info);
-
-    Model model{m_device, m_buffer};
-    m_models.push_back(model);
+    m_modelBuilders.push_back({builder, entities});
   }
 
   void ModelManager::createModels()
   {
-    uint32_t bufferSize{};
+    VkBufferUsageFlags vertexUsage{VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT};
+    VkBufferUsageFlags indexUsage{VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT};
 
-    for(const auto& info : m_model3DCreateInfo)
+
+    VkDeviceSize stagingBufferSize{};
+    VkDeviceSize vertexOffset{};
+    VkDeviceSize indexOffset{};
+    for(auto& builder : m_modelBuilders)
     {
-      bufferSize += sizeof(info.vertices3d[0]) * info.vertices3d.size();
+      builder.vertexBuffer.memoryOffset = {vertexOffset};
+      builder.indexBuffer.memoryOffset = {indexOffset};
+      ////
+
+      builder.vertexBuffer.size = sizeof(builder.vertices[0]) * builder.vertices.size();
+      builder.indexBuffer.size = sizeof(builder.indices[0]) * builder.indices.size();
+
+      vertexOffset += builder.vertexBuffer.size;
+      indexOffset += builder.indexBuffer.size;
+
+      stagingBufferSize = std::max(stagingBufferSize, builder.vertexBuffer.size + builder.indexBuffer.size);
     }
 
-    VkBufferUsageFlags usage{VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT};
-    MemAllocator::createBuffer(m_device, bufferSize, usage, &m_buffer);
-    MemAllocator::allocateBuffer(m_device, m_buffer, m_memory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    Buffer stagingBuffer{};
+    Memory stagingBufferMemory{};
 
-    VkDeviceSize memoryOffset{};
-    for(size_t index{}; auto& info : m_model3DCreateInfo)
+    MemAllocator::createBuffer(m_device, stagingBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stagingBuffer);
+    MemAllocator::allocateBuffer(m_device, stagingBuffer, stagingBufferMemory, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+    for(auto& builder : m_modelBuilders)
     {
-      m_models[index].createVertexBuffer(info.vertices3d, memoryOffset);
-      memoryOffset += (sizeof(info.vertices3d[0]) * info.vertices3d.size());
+      //buffer
+      MemAllocator::createBuffer(m_device, builder.vertexBuffer.size, vertexUsage, &builder.vertexBuffer.buffer);
+      MemAllocator::allocateBuffer(m_device, builder.vertexBuffer, builder.vertexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-      if(index == 1)
-        throw std::runtime_error("memory offset may be broken here");
+      MemAllocator::mapBufferMemory(m_device, stagingBufferMemory.memory, builder.vertexBuffer.size, 0, builder.vertices.data());
+      MemAllocator::copyBuffer(m_device, stagingBuffer, 0, builder.vertexBuffer, 0, builder.vertexBuffer.size);
+
+      if(!builder.indexBuffer.size)
+        continue;
+
+      MemAllocator::createBuffer(m_device, builder.indexBuffer.size, indexUsage, &builder.indexBuffer.buffer);
+      MemAllocator::allocateBuffer(m_device, builder.indexBuffer, builder.indexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      MemAllocator::mapBufferMemory(m_device, stagingBufferMemory.memory, builder.indexBuffer.size, 0, builder.indices.data());
+      MemAllocator::copyBuffer(m_device, stagingBuffer, 0, builder.indexBuffer, builder.indexBuffer.memoryOffset, builder.indexBuffer.size);
     }
 
-    //    m_model2DCreateInfo.clear();
-    m_model3DCreateInfo.clear();
+    for(auto& builder : m_modelBuilders)
+    {
+      m_models.emplace_back(m_device, builder);
+      for(auto& e : builder.entities)
+      {
+        auto& c{m_ecs.getComponent<cmp::Common>(e)};
+        c.setModel(&m_models.back());
+      }
+    }
+
+    m_modelBuilders.clear();
   }
 
   Model& ModelManager::get(EntityID entity)
   {
-    size_t index{m_modelIndexes[entity]};
-    return m_models[index];
+    //   size_t index{m_modelIndexes[entity]};
+    //   return m_models[index];
+    throw std::runtime_error("unimplemented function");
   }
-
-  std::vector<Model::Vertex3D> ModelManager::cubeModel()
-  {
-    return std::vector<Model::Vertex3D>
-    {
-      // left face (white)
-      {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
-      {{-.5f, .5f, .5f}, {.9f, .9f, .9f}},
-      {{-.5f, -.5f, .5f}, {.9f, .9f, .9f}},
-      {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
-      {{-.5f, .5f, -.5f}, {.9f, .9f, .9f}},
-      {{-.5f, .5f, .5f}, {.9f, .9f, .9f}},
-
-      // right face (yellow)
-      {{.5f, -.5f, -.5f}, {.8f, .8f, .1f}},
-      {{.5f, .5f, .5f}, {.8f, .8f, .1f}},
-      {{.5f, -.5f, .5f}, {.8f, .8f, .1f}},
-      {{.5f, -.5f, -.5f}, {.8f, .8f, .1f}},
-      {{.5f, .5f, -.5f}, {.8f, .8f, .1f}},
-      {{.5f, .5f, .5f}, {.8f, .8f, .1f}},
-
-      // top face (orange, remember y axis points down)
-      {{-.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
-      {{.5f, -.5f, .5f}, {.9f, .6f, .1f}},
-      {{-.5f, -.5f, .5f}, {.9f, .6f, .1f}},
-      {{-.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
-      {{.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
-      {{.5f, -.5f, .5f}, {.9f, .6f, .1f}},
-
-      // bottom face (red)
-      {{-.5f, .5f, -.5f}, {.8f, .1f, .1f}},
-      {{.5f, .5f, .5f}, {.8f, .1f, .1f}},
-      {{-.5f, .5f, .5f}, {.8f, .1f, .1f}},
-      {{-.5f, .5f, -.5f}, {.8f, .1f, .1f}},
-      {{.5f, .5f, -.5f}, {.8f, .1f, .1f}},
-      {{.5f, .5f, .5f}, {.8f, .1f, .1f}},
-
-      // nose face (blue)
-      {{-.5f, -.5f, .5f}, {.1f, .1f, .8f}},
-      {{.5f, .5f, .5f}, {.1f, .1f, .8f}},
-      {{-.5f, .5f, .5f}, {.1f, .1f, .8f}},
-      {{-.5f, -.5f, .5f}, {.1f, .1f, .8f}},
-      {{.5f, -.5f, .5f}, {.1f, .1f, .8f}},
-      {{.5f, .5f, .5f}, {.1f, .1f, .8f}},
-
-      // tail face (green)
-      {{-.5f, -.5f, -.5f}, {.1f, .8f, .1f}},
-      {{.5f, .5f, -.5f}, {.1f, .8f, .1f}},
-      {{-.5f, .5f, -.5f}, {.1f, .8f, .1f}},
-      {{-.5f, -.5f, -.5f}, {.1f, .8f, .1f}},
-      {{.5f, -.5f, -.5f}, {.1f, .8f, .1f}},
-      {{.5f, .5f, -.5f}, {.1f, .8f, .1f}},
-    };
-  };
-
-    std::vector<Model::Vertex3D> ModelManager::modelVertices()
-    {
-      return std::vector<Model::Vertex3D>{
-        {{-0.4f, -0.4f, .5f}, {1.0f, 0.0f, 0.4f}},
-        {{0.4f, -0.4f, .5f}, {0.0f, 0.4f, 1.0f}},
-        {{0.4f, 0.4f, .5f}, {0.4f, 1.0f, 0.0f}},
-        {{0.4f, 0.4f, .5f}, {1.0f, 0.0f, 0.4f}},
-        {{-0.4f, 0.4f, .5f}, {0.0f, 0.4f, 1.0f}},
-        {{-0.4f, -0.4f, .5f}, {0.4f, 1.0f, 0.0f}},
-
-        {{-0.4f, -0.4f, -.5f}, {1.0f, 0.0f, 0.4f}},
-        {{0.4f, -0.4f, -.5f}, {0.0f, 0.4f, 1.0f}},
-        {{0.4f, 0.4f, -.5f}, {0.4f, 1.0f, 0.0f}},
-        {{0.4f, 0.4f, -.5f}, {1.0f, 0.0f, 0.4f}},
-        {{-0.4f, 0.4f, -.5f}, {0.0f, 0.4f, 1.0f}},
-        {{-0.4f, -0.4f, -.5f}, {0.4f, 1.0f, 0.0f}},
-      };
-    }
-  } // namespace vke
+} // namespace vke

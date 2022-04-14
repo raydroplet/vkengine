@@ -76,8 +76,8 @@ namespace vke
       .frag = "build/shaders/shader.frag.spv",
     };
 
-    auto bindingDescription{Model::Vertex3D::getVertexInputBindingDescription()};
-    auto attributeDescription{Model::Vertex3D::getVertexInputAttributeDescription()};
+    auto bindingDescription{Model::Vertex::getVertexInputBindingDescription()};
+    auto attributeDescription{Model::Vertex::getVertexInputAttributeDescription()};
 
     config.vertexInput.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescription.size());
     config.vertexInput.pVertexBindingDescriptions = bindingDescription.data();
@@ -144,42 +144,51 @@ namespace vke
     }
   }
 
-  void RenderSystem::renderEntities(VkCommandBuffer commandBuffer, const Camera& camera, std::span<EntityID> entities)
+  void RenderSystem::renderEntities(VkCommandBuffer commandBuffer, Camera const& camera, std::span<EntityID> entities)
   {
     m_pipeline->bind(commandBuffer);
     /*m_pipeline->bindDescriptorSets(commandBuffer, &m_descriptorSets[imageIndex], m_pipelineLayout);*/
 
-    auto projectionView{camera.projection()}; //  * camera.view()
+    // each object will use the same projectionView, so we calculate it once outside the loop
+    auto const& projectionView{camera.projection() * camera.view()}; //
 
     for(auto& entity : entities)
     {
-      using namespace component;
+      using namespace cmp;
       Transform3D& transform{m_context.ecs.getComponent<Transform3D>(entity)};
       Color& color{m_context.ecs.getComponent<Color>(entity)};
+      Common& common{m_context.ecs.getComponent<cmp::Common>(entity)};
 
       // transform.rotation = (j) * glm::two_pi<float>();
       // transform.translation.x = {}; //i[entity];
       // transform.translation.y = {}; //i[entity];
 
-      transform.rotation.x = glm::mod(transform.rotation.x + 0.0250f, glm::two_pi<float>());
-      transform.rotation.y = glm::mod(transform.rotation.y - 0.0200f, -glm::two_pi<float>());
-      transform.rotation.z = glm::mod(transform.rotation.z + 0.0150f, glm::two_pi<float>());
+//     transform.rotation.x = glm::mod(transform.rotation.x + 0.016f, glm::two_pi<float>());
+//    transform.rotation.y = glm::mod(transform.rotation.y + 0.014f, glm::two_pi<float>());
+//     transform.rotation.z = glm::mod(transform.rotation.z + 0.012f, glm::two_pi<float>());
 
       // transform.rotation.z = glm::quarter_pi<float>();
 
+      auto modelMatrix{transform.mat4()};
+      auto normalMatrix{transform.normalMatrix()};
+
       SimplePushConstantData push{
-        .transform = projectionView * transform.mat4(),
-        // .offset = transform.translation,
-        .color = color,
+        .transform = projectionView * modelMatrix,
+        //.modelMatrix = modelMatrix,
+        .normalMatrix = normalMatrix, // automatically convert the mat3 to mat4
       };
 
       vkCmdPushConstants(commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SimplePushConstantData), &push);
 
       // model.model->bindBuffers(commandBuffer);
       // model.model->drawIndexed(commandBuffer);
-      vke::Model& model{m_context.modelManager.get(entity)};
-      model.bindVertexBuffer(commandBuffer);
-      model.draw(commandBuffer);
+
+      if(!common.model())
+        throw std::runtime_error("fix-me non-existent-model on-rendersystem-renderEntities()");
+
+      common.model()->bindBuffers(commandBuffer);
+      common.model()->draw(commandBuffer);
+      //model.bindIndexBuffer(commandBuffer);
     }
   }
 } // namespace vke

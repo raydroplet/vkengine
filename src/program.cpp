@@ -6,10 +6,9 @@ namespace vke
       m_eventRelayer{},
       m_window{m_eventRelayer},
       m_device{m_window},
-      m_modelManager{m_device},
       m_ecs{},
-      m_renderer{m_device, m_window, m_eventRelayer},
-      camera{}
+      m_modelManager{m_device, m_ecs},
+      m_renderer{m_device, m_window, m_eventRelayer}
   {
     loadEntities();
 
@@ -39,49 +38,57 @@ namespace vke
 
   void Program::run()
   {
-    using TimeStep = std::chrono::duration<double>;
+    using TimeStep = std::chrono::duration<double, std::chrono::seconds::period>;
     using scTimePoint = std::chrono::steady_clock::time_point;
-    using scDuration = std::chrono::steady_clock::duration;
 
-    KeyboardInput cameraController{m_ecs};
+    Camera camera{};
+    KeyboardInput cameraController{m_ecs, m_window};
     EntityID cameraEntity{m_ecs.createEntity()};
-    m_ecs.addComponent(cameraEntity, component::Transform3D{});
+    m_ecs.addComponent(cameraEntity, cmp::Transform3D{
+      .translation{-1.2f, -1.5f, 0.f},
+      .rotation{-glm::quarter_pi<double>(), glm::quarter_pi<double>(), 0.f}
+    });
 
-    // camera.setViewDirection(glm::vec3{0.f}, glm::vec3{-0.5f, 0.0f, 1.0f});
-    //    camera.setViewTarget(glm::vec3{1.f, -2.f, 3.f}, glm::vec3{0.0f, 0.0f, 2.5f});
+    // camera.setViewDirection(glm::vec3{0.f}, glm::vec3{0.0f, 0.0f, 2.5f});
+    // camera.setViewTarget(glm::vec3{1.f, -2.f, 3.f}, glm::vec3{0.0f, 0.0f, 2.5f});
 
-    TimeStep timeStep;
-    scTimePoint frameStartTime;
-    scDuration frameDuration;
+    auto const& now{&std::chrono::steady_clock::now};
+    scTimePoint frameStartTime{now()};
+    scTimePoint frameEndTime{};
+    TimeStep timeStep{};
 
     while(!m_window.shouldClose())
     {
-      frameStartTime = std::chrono::steady_clock::now();
+      frameEndTime = now();
+      timeStep = frameEndTime - frameStartTime;
+      frameStartTime = frameEndTime;
 
       m_window.poolEvents();
       dispatchEvents();
 
+      auto& translation{m_ecs.getComponent<cmp::Transform3D>(cameraEntity).translation};
+      auto& rotation{m_ecs.getComponent<cmp::Transform3D>(cameraEntity).rotation};
+      auto aspectRatio{m_renderer.swapchainAspectRatio()};
 
-      auto& translation{m_ecs.getComponent<component::Transform3D>(cameraEntity).translation};
-      auto& rotation{m_ecs.getComponent<component::Transform3D>(cameraEntity).rotation};
+      ////////////////
+      auto& gameObjTransform{m_ecs.getComponent<cmp::Transform3D>(gameObj)};
+      double speed{0.5};
+      double rotX{gameObjTransform.rotation.x + (speed * timeStep.count())};
+      double rotY{gameObjTransform.rotation.y + (speed / 2 * timeStep.count())};
+      double rotZ{gameObjTransform.rotation.z + (speed / 3 * timeStep.count())};
+      gameObjTransform.rotation.x = glm::mod(rotX, glm::two_pi<double>());
+      gameObjTransform.rotation.y = glm::mod(rotY, glm::two_pi<double>());
+      gameObjTransform.rotation.z = glm::mod(rotZ, glm::two_pi<double>());
+      ////////////////
 
-      if(false)
-      {
-        system("clear");
-        std::cout << "Translation\t[" << translation.x << ' ' << translation.y << ' ' << translation.z << "]" << std::endl;
-        std::cout << "Rotation\t[" << rotation.x << ' ' << rotation.y << ' ' << rotation.z << "]" << std::endl;
-      }
+      cameraController.moveInPlaneXZ(timeStep, cameraEntity);
+      // camera.setViewDirection(translation, glm::vec3{0.5f, 0.0f, 1.f});
 
-      cameraController.moveInPlaneXZ(m_window, timeStep, cameraEntity);
-      // camera.setViewDirection(translation, glm::vec3{0.f, 0.f, 1.f});
+      camera.setViewRotationZYX(translation, rotation);
+      // camera.setViewRotationXYZ(translation, rotation);
 
-      //camera.broken_setViewXYZ(translation, rotation);
-      camera.setViewYXZ(translation, rotation);
-
-      // camera.setOrthographicProjection(m_renderer.swapchainExtent(), 0.1f, 10.f);
-      camera.setPerspectiveProjection(m_renderer.swapchainExtent(), glm::radians(50.f), 0.1f, 10.f);
-      // camera.slow_setPerspectiveProjection(glm::radians(50.f), m_renderer.swapchainAspectRatio(), 0.1, 10.f);
-
+      // camera.setOrthographicProjection(aspectRatio, 0.1f, 5.f);
+      camera.setPerspectiveProjection(glm::radians(50.f), aspectRatio, 0.1, 10.f);
 
       // you could draw only when necessary, and repeatedly present the current image.
       // this can avoid needless draw() calls in more static scenes.
@@ -97,10 +104,7 @@ namespace vke
         m_renderer.present();
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(32));
-
-      frameDuration = std::chrono::steady_clock::now() - frameStartTime;
-      timeStep = frameDuration;
+      std::this_thread::sleep_for(std::chrono::milliseconds(6));
     }
 
     vkDeviceWaitIdle(m_device);
@@ -108,62 +112,67 @@ namespace vke
 
   void Program::dispatchEvents()
   {
-    //m_eventRelayer.dispatch<event::WindowResized>();
+    // m_eventRelayer.dispatch<event::WindowResized>();
     m_eventRelayer.dispatch<event::InvalidPipeline>();
   }
 
   void Program::loadEntities()
   {
-    std::vector<uint32_t> indices{0, 1, 2, 2, 3, 0};
-    std::vector<Model::Vertex2D> vertices2D{
-      {{-0.4f, -0.4f}, {1.0f, 0.0f, 0.4f}},
-      {{0.4f, -0.4f}, {0.0f, 0.4f, 1.0f}},
-      {{0.4f, 0.4f}, {0.4f, 1.0f, 0.0f}},
-      {{-0.4f, 0.4f}, {1.0f, 0.0f, 0.4f}}};
+    m_ecs.registerComponent<cmp::Transform3D>();
+    m_ecs.registerComponent<cmp::Common>();
+    m_ecs.registerComponent<cmp::Color>();
 
-    m_ecs.registerComponent<component::Transform3D>();
-    m_ecs.registerComponent<component::Color>();
-
-    // auto model = std::make_shared<Model>(m_device, vertices, indices, m_renderer.swapchainImageCount());
-    ModelManager::Model3DCreateInfo info{
-      .vertices3d = m_modelManager.cubeModel(),
+    cmp::Transform3D transform3D{
+      .translation{-2.f, 0.f, 1.f},
+      .scale{1.f, 1.f, 1.f},
+      .rotation{
+        {}, //glm::radians(-15.f),
+        {}, //glm::radians(35.f),
+        {},
+      },
     };
 
-//  for(int i{}; i < entityCount; ++i)
-//    info.entities.push_back(m_ecs.createEntity());
+    cmp::Common common{};
 
-    int entityCount{1};
-    for(int i{}; i < entityCount; ++i)
+    //  EntityID cube{m_ecs.createEntity()};
+    gameObj = m_ecs.createEntity();
+    auto cube = m_ecs.createEntity();
+    auto smoothVase = m_ecs.createEntity();
+    auto smallVase = m_ecs.createEntity();
+
+    m_entities.push_back(gameObj);
+    m_entities.push_back(cube);
+    m_entities.push_back(smoothVase);
+    m_entities.push_back(smallVase);
+
+    for(auto& e : m_entities)
     {
-      component::Transform3D transform3D{};
-      component::Color color{};
+      transform3D.translation.x += 1.0;
 
-      EntityID cube{m_ecs.createEntity()};
-
-      // square.transform2D.scale = {.4f, .6f};
-      // square.transform2D.rotation = .25f * glm::two_pi<float>();
-      // transform3D.translation.x = 0.f + (0.05f * i);
-      // transform3D.translation.y = 0.f + (0.05f * i);
-
-      // transform3D.rotation.x = { glm::quarter_pi<float>() };
-      // transform3D.rotation.y = {glm::quarter_pi<float>()};
-      // transform3D.rotation.z = {glm::quarter_pi<float>()};
-
-      transform3D.translation.z = {2.5f};
-
-      transform3D.scale = {.5f, .5f, .5f};
-      color.color.x = 0.01f + (0.0075f * i);
-      color.color.y = 0.02f + (0.0075f * i);
-      color.color.z = 0.03f + (0.0075f * i);
-
-      m_ecs.addComponent<component::Transform3D>(cube, transform3D);
-      m_ecs.addComponent<component::Color>(cube, color);
-
-      m_entities.push_back(cube);
-      info.entities.push_back(cube);
+      m_ecs.addComponent<cmp::Transform3D>(e, transform3D);
+      m_ecs.addComponent<cmp::Common>(e, common);
+      m_ecs.addComponent<cmp::Color>(e, {});
     }
 
-    m_modelManager.give(info);
+    m_ecs.getComponent<cmp::Transform3D>(smallVase).scale = {1.f, 0.5f, 1.f};
+
+    // Model::Builder builder{m_modelManager.cubeModelBuilder()};
+    Model::Builder gameObjBuilder{};
+    gameObjBuilder.loadModel("models/flat_vase.obj");
+
+    Model::Builder cubeBuilder{};
+    cubeBuilder.loadModel("models/colored_cube.obj");
+
+    Model::Builder smoothBuilder{};
+    smoothBuilder.loadModel("models/smooth_vase.obj");
+
+    Model::Builder smallBuilder{};
+    smallBuilder.loadModel("models/smooth_vase.obj");
+
+    m_modelManager.give(gameObjBuilder, {gameObj});
+    m_modelManager.give(cubeBuilder, {cube});
+    m_modelManager.give(smoothBuilder, {smoothVase});
+    m_modelManager.give(smallBuilder, {smallVase});
     m_modelManager.createModels();
   }
 

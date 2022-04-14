@@ -24,8 +24,11 @@ namespace vke
 //    static void notifySwapchainRecreation(void* object, VkRenderPass renderPass, VkExtent2D extent);
 
   private:
-    std::unique_ptr<Model> createCubeModel(Device& device, glm::vec3 offset);
     void loadEntities();
+
+    /////////////
+    EntityID gameObj{};
+    /////////////
 
 //   void bindListeners();
 //   void poolEvents();
@@ -35,12 +38,11 @@ namespace vke
     Window m_window;
     Device m_device;
 
-    ModelManager m_modelManager;
     Coordinator m_ecs;
+    ModelManager m_modelManager;
 
     Renderer m_renderer;
 
-    Camera camera;
     std::unique_ptr<RenderSystem> m_renderSystem;
     //{m_device, m_modelManager, m_renderer.renderPass(), m_renderer.swapchainExtent()};
 

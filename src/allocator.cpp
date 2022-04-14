@@ -49,7 +49,7 @@ namespace vke
     vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
 
     uint32_t memoryType{findMemoryType(device.physicalInfo().memoryProperties, memRequirements.memoryTypeBits, optimalProperties, requiredProperties)};
-    allocate(device, memRequirements.size, memoryType, &memory);
+    allocate(device, memRequirements.size, memoryType, &memory.memory);
     buffer.size = memRequirements.size;
     buffer.memoryOffset = 0;
 
@@ -60,7 +60,7 @@ namespace vke
 
   inline void MemAllocator::bindBufferMemory(Device& device, Buffer& buffer, Memory& memory)
   {
-    vkBindBufferMemory(device, buffer, memory, buffer.memoryOffset);
+    vkBindBufferMemory(device, buffer, memory.memory, buffer.memoryOffset);
   }
 
   void MemAllocator::allocateBuffers(Device& device, std::span<Buffer> buffers, Memory& memory, VkMemoryPropertyFlags requiredProperties, VkMemoryPropertyFlags optimalProperties)
@@ -97,11 +97,11 @@ namespace vke
 
     VkMemoryAllocateInfo allocateInfo{
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .allocationSize = allocationSize,
-        .memoryTypeIndex = memoryType,
+      .allocationSize = allocationSize,
+      .memoryTypeIndex = memoryType,
     };
 
-    if(vkAllocateMemory(device, &allocateInfo, nullptr, &memory) != VK_SUCCESS)
+    if(vkAllocateMemory(device, &allocateInfo, nullptr, &memory.memory) != VK_SUCCESS)
       throw std::runtime_error("Failed to allocate buffer memory");
 
     // vkAllocateMemory is guaranteed to return an allocation that is aligned to the largest alignment requirement for your Vulkan implementation(ie: if one resource type needs to be 16 byte aligned, and another type 128 byte aligned, all vkAllocateMemory calls will be 128 bit aligned), so you never have to worry about the alignment of these allocs.
@@ -113,11 +113,11 @@ namespace vke
   {
     VkBufferCreateInfo createInfo{
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size = size,   // sizeof(Vertex) * vertices.size()
-        .usage = usage, // VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        //.queueFamilyIndexCount = ,
-        //.pQueueFamilyIndices = ,
+      .size = size,   // sizeof(Vertex) * vertices.size()
+      .usage = usage, // VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+      //.queueFamilyIndexCount = ,
+      //.pQueueFamilyIndices = ,
     };
 
     uint32_t indices[]{device.queues().graphicsFamily, device.queues().transferFamily};
@@ -136,9 +136,9 @@ namespace vke
   {
     VkCommandBufferAllocateInfo allocInfo{
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = device.commandPools().transfer,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
+      .commandPool = device.commandPools().transfer,
+      .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+      .commandBufferCount = 1,
     };
 
     VkCommandBuffer commandBuffer;
@@ -146,7 +146,7 @@ namespace vke
 
     VkCommandBufferBeginInfo beginInfo{
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     };
 
     VkBufferCopy copyRegion{
@@ -180,7 +180,7 @@ namespace vke
     vkUnmapMemory(device, memory);
   }
 
-  //TODO: maybe cache the create info just like in modelManager
+  // TODO: maybe cache the create info just like in modelManager
   void MemAllocator::createImage(Device& device, const VkImageCreateInfo& createInfo, VkMemoryPropertyFlags properties, VkDeviceMemory* memory, VkImage* image)
   {
     if(vkCreateImage(device, &createInfo, nullptr, image) != VK_SUCCESS)
@@ -260,4 +260,4 @@ namespace vke
      }
      }
      */
-}
+} // namespace vke

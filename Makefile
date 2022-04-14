@@ -1,17 +1,17 @@
-CXX         = clang++
-CXXFLAGS    = -c -g -std=c++20 $(WARNINGS)
+CXX 	 = clang++
+CXXFLAGS = -c -g -std=c++20 $(WARNINGS) -I$(INCDIR)
 
-WARNINGS    = -pedantic-errors -Wall -Wextra -Weffc++ -fsanitize=undefined -Wno-unused-parameter
-LDFLAGS     = -fsanitize=undefined
-LDLIBS      = -lglfw -lvulkan -ldl -lpthread
+WARNINGS = -pedantic-errors -Wall -Wextra -Weffc++ -fsanitize=undefined -Wno-unused-parameter
+LDFLAGS  = -fsanitize=undefined
+LDLIBS   = -lglfw -lvulkan -ldl -lpthread
 
-DEPENDECIES = $(wildcard *.hpp)
-BINARY      = bin
-DEFINES     =
+DEPENDENCIES = $(shell find $(SRCDIR) -name *.hpp)
+BINARY       = bin
+DEFINES      = -DGLM_ENABLE_EXPERIMENTAL
 
-OBJDIR      = build
-SRCDIR      = src
-INCDIR      = include
+OBJDIR = build
+SRCDIR = src
+INCDIR = include
 
 #$(shell find -type f -name "*.cpp")
 CPPS:= $(wildcard $(SRCDIR)/*.cpp)
@@ -44,7 +44,7 @@ $(BINARY): $(OBJS)
 	@echo -e $(GF)[LINKING]$(NF)
 	@$(CXX) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(DEPENDECIES)
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(INCDIR)/%.hpp
 	@echo -e $(GF)[COMPILING]$(NF)$(CF) $(subst $(SRCDIR)/,,$<)$(NF)
 	@$(CXX) $(CXXFLAGS) $(DEFINES) $< -o $@
 
@@ -61,5 +61,24 @@ $(FRAG_SHADERS_OBJS): $(FRAG_SHADERS)
 clean:
 	@rm -f $(OBJS) $(BINARY)
 
-run: $(BINARY)
+run: $(BINARY) $(SHADER_OBJS)
 	./bin
+
+files:
+	@read -p 'Enter [File name] [Folder]: ' name folder; \
+	if [ -n "$$name" ] && [ -n "$$folder" ]; then \
+	  mkdir -p $(INCDIR)/$$folder; \
+	  mkdir -p $(SRCDIR)/$$folder; \
+	  touch $(INCDIR)/$$folder/"$$name".hpp; \
+	  touch $(SRCDIR)/$$folder/"$$name".cpp; \
+	  echo -e "#pragma once\n\n//" > $(INCDIR)/$$folder/"$$name".hpp; \
+	  echo -e "#include "\"$$folder/$$name".hpp\"\n\n//" > $(SRCDIR)/$$folder/"$$name".cpp; \
+	elif [ -n "$$name" ] && [ -z "$$folder"]; then \
+	  #touch $(INCDIR)/"$$name".hpp; \
+	  #touch $(SRCDIR)/"$$name".cpp; \
+	  echo -e "#pragma once\n\n//" > $(INCDIR)/"$$name".hpp; \
+	  echo -e "#include "\"$$name".hpp\"\n\n//" > $(SRCDIR)/"$$name".cpp; \
+	else \
+	  echo "Invalid input"; \
+	fi;
+
