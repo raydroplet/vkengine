@@ -16,6 +16,7 @@
 #include <limits>
 #include <list>
 #include <memory>
+#include <numeric>
 #include <optional>
 #include <queue>
 #include <set>

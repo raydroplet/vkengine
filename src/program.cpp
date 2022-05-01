@@ -12,13 +12,10 @@ namespace vke
   {
     loadEntities();
 
-    RenderSystemContext renderSystemContext{
-      .eventRelayer = m_eventRelayer,
-      .ecs = m_ecs,
-      .modelManager = m_modelManager,
-    };
-
-    m_renderSystem = std::make_unique<RenderSystem>(m_device, renderSystemContext, m_renderer.renderPass(), m_renderer.swapchainExtent());
+    m_globalDescriptorPool = DescriptorPool::Builder{m_device}
+                               .setMaxDescriptorSets(m_renderer.maxFramesInFlight())
+                               .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, m_renderer.maxFramesInFlight())
+                               .build();
   }
 
   Program::~Program()
@@ -41,13 +38,53 @@ namespace vke
     using TimeStep = std::chrono::duration<double, std::chrono::seconds::period>;
     using scTimePoint = std::chrono::steady_clock::time_point;
 
-    Camera camera{};
+    ////////// uniformBuffer //////////
+    auto& limits{m_device.physicalInfo().deviceProperties.limits};
+    Buffer uniformBuffer{
+      m_device,
+      m_renderer.maxFramesInFlight(),
+      sizeof(GlobalUbo),
+      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+      0,
+      std::lcm(limits.minUniformBufferOffsetAlignment, limits.nonCoherentAtomSize), // must also be aligned by nonCoherentAtomSize because of flushing
+    };
+
+    uniformBuffer.mapMemory();
+
+    ////////// DescriptorSet //////////
+    VkDescriptorSet globalDescriptorSet{};
+
+    auto descriptorSetLayout = DescriptorSetLayout::Builder{m_device}
+                                 .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+                                 .build();
+
+    auto bufferInfo{uniformBuffer.descriptorInfo()};
+    DescriptorWriter{*descriptorSetLayout, *m_globalDescriptorPool}
+      .addBuffer(0, &bufferInfo)
+      .write(&globalDescriptorSet);
+
+    ////////// RenderSystem //////////
+    RenderSystemContext renderSystemContext{
+      .eventRelayer = m_eventRelayer,
+      .ecs = m_ecs,
+      .modelManager = m_modelManager,
+      .renderPass = m_renderer.renderPass(),
+      .extent = m_renderer.swapchainExtent(),
+      .globalDescriptorSetLayout = *descriptorSetLayout,
+    };
+
+    m_renderSystem = std::make_unique<RenderSystem>(m_device, renderSystemContext);
+
+    ////////// Rendering //////////
     KeyboardInput cameraController{m_ecs, m_window};
+    Camera camera{};
     EntityID cameraEntity{m_ecs.createEntity()};
-    m_ecs.addComponent(cameraEntity, cmp::Transform3D{
-      .translation{-1.2f, -1.5f, 0.f},
-      .rotation{-glm::quarter_pi<double>(), glm::quarter_pi<double>(), 0.f}
-    });
+
+    m_ecs.addComponent(cameraEntity,
+      cmp::Transform3D{
+        .translation{-1.2f, -1.5f, 0.f},
+        .rotation{-glm::quarter_pi<double>(), glm::quarter_pi<double>(), 0.f}});
 
     // camera.setViewDirection(glm::vec3{0.f}, glm::vec3{0.0f, 0.0f, 2.5f});
     // camera.setViewTarget(glm::vec3{1.f, -2.f, 3.f}, glm::vec3{0.0f, 0.0f, 2.5f});
@@ -66,20 +103,24 @@ namespace vke
       m_window.poolEvents();
       dispatchEvents();
 
+      ////////////////
+      double speed{0.3};
+      for(auto& e : m_entities)
+      {
+        speed += 0.1;
+        auto& eTransform{m_ecs.getComponent<cmp::Transform3D>(e)};
+        double rotX{eTransform.rotation.x + (speed * timeStep.count())};
+        double rotY{eTransform.rotation.y + (speed / 2 * timeStep.count())};
+        double rotZ{eTransform.rotation.z + (speed / 3 * timeStep.count())};
+        eTransform.rotation.x = glm::mod(rotX, glm::two_pi<double>());
+        eTransform.rotation.y = glm::mod(rotY, glm::two_pi<double>());
+        eTransform.rotation.z = glm::mod(rotZ, glm::two_pi<double>());
+      }
+      ////////////////
+
       auto& translation{m_ecs.getComponent<cmp::Transform3D>(cameraEntity).translation};
       auto& rotation{m_ecs.getComponent<cmp::Transform3D>(cameraEntity).rotation};
       auto aspectRatio{m_renderer.swapchainAspectRatio()};
-
-      ////////////////
-      auto& gameObjTransform{m_ecs.getComponent<cmp::Transform3D>(gameObj)};
-      double speed{0.5};
-      double rotX{gameObjTransform.rotation.x + (speed * timeStep.count())};
-      double rotY{gameObjTransform.rotation.y + (speed / 2 * timeStep.count())};
-      double rotZ{gameObjTransform.rotation.z + (speed / 3 * timeStep.count())};
-      gameObjTransform.rotation.x = glm::mod(rotX, glm::two_pi<double>());
-      gameObjTransform.rotation.y = glm::mod(rotY, glm::two_pi<double>());
-      gameObjTransform.rotation.z = glm::mod(rotZ, glm::two_pi<double>());
-      ////////////////
 
       cameraController.moveInPlaneXZ(timeStep, cameraEntity);
       // camera.setViewDirection(translation, glm::vec3{0.5f, 0.0f, 1.f});
@@ -94,9 +135,24 @@ namespace vke
       // this can avoid needless draw() calls in more static scenes.
       if(m_renderer.beginFrame())
       {
+        FrameInfo info{
+          .frameIndex = m_renderer.frameIndex(),
+          .timeStep = timeStep,
+          .commandBuffer = m_renderer.currentCommandBuffer(),
+          .camera{camera},
+          .globalDescriptorSet = globalDescriptorSet,
+        };
+
+        GlobalUbo ubo{
+          .projectionView = camera.projection() * camera.view(),
+          .lightDirection = {-1.f, -1.f, -1.f},
+        };
+        uniformBuffer.write(&ubo);
+        uniformBuffer.flush();
+
         m_renderer.beginRenderPass();
 
-        m_renderSystem->renderEntities(m_renderer.currentCommandBuffer(), camera, m_entities);
+        m_renderSystem->renderEntities(info, m_entities);
 
         m_renderer.endRenderPass();
         m_renderer.endFrame();
@@ -126,8 +182,8 @@ namespace vke
       .translation{-2.f, 0.f, 1.f},
       .scale{1.f, 1.f, 1.f},
       .rotation{
-        {}, //glm::radians(-15.f),
-        {}, //glm::radians(35.f),
+        {}, // glm::radians(-15.f),
+        {}, // glm::radians(35.f),
         {},
       },
     };
@@ -135,12 +191,12 @@ namespace vke
     cmp::Common common{};
 
     //  EntityID cube{m_ecs.createEntity()};
-    gameObj = m_ecs.createEntity();
+    auto flatVase = m_ecs.createEntity();
     auto cube = m_ecs.createEntity();
     auto smoothVase = m_ecs.createEntity();
     auto smallVase = m_ecs.createEntity();
 
-    m_entities.push_back(gameObj);
+    m_entities.push_back(flatVase);
     m_entities.push_back(cube);
     m_entities.push_back(smoothVase);
     m_entities.push_back(smallVase);
@@ -157,19 +213,12 @@ namespace vke
     m_ecs.getComponent<cmp::Transform3D>(smallVase).scale = {1.f, 0.5f, 1.f};
 
     // Model::Builder builder{m_modelManager.cubeModelBuilder()};
-    Model::Builder gameObjBuilder{};
-    gameObjBuilder.loadModel("models/flat_vase.obj");
+    Model::Builder flatVaseBuilder{"models/flat_vase.obj"};
+    Model::Builder cubeBuilder{"models/colored_cube.obj"};
+    Model::Builder smoothBuilder{"models/smooth_vase.obj"};
+    Model::Builder smallBuilder{"models/smooth_vase.obj"};
 
-    Model::Builder cubeBuilder{};
-    cubeBuilder.loadModel("models/colored_cube.obj");
-
-    Model::Builder smoothBuilder{};
-    smoothBuilder.loadModel("models/smooth_vase.obj");
-
-    Model::Builder smallBuilder{};
-    smallBuilder.loadModel("models/smooth_vase.obj");
-
-    m_modelManager.give(gameObjBuilder, {gameObj});
+    m_modelManager.give(flatVaseBuilder, {flatVase});
     m_modelManager.give(cubeBuilder, {cube});
     m_modelManager.give(smoothBuilder, {smoothVase});
     m_modelManager.give(smallBuilder, {smallVase});

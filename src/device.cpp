@@ -212,6 +212,9 @@ namespace vke
         std::cout << "> HEAP_0" << std::endl;
     }
 
+    std::cout << "nonCoherentAtomSize -> " << physicalInfo().deviceProperties.limits.nonCoherentAtomSize << '\n';
+    std::cout << "maxAllocations -> " << physicalInfo().deviceProperties.limits.maxMemoryAllocationCount;
+
     std::cout.flush();
   }
 

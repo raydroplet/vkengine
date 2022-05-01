@@ -19,71 +19,77 @@ namespace vke
   Model::Model(Device& device, Builder& builder) :
       m_device{device}
   {
-    createVertexBuffer(builder.vertices, builder.vertexBuffer, builder.vertexBufferMemory);
-    createIndexBuffer(builder.indices, builder.indexBuffer, builder.indexBufferMemory);
+    createVertexBuffer(builder.vertices);
+    createIndexBuffer(builder.indices);
   }
 
   Model::~Model()
   {
-    vkDestroyBuffer(m_device, m_vertexBuffer, nullptr);
-    vkFreeMemory(m_device, m_vertexBufferMemory.memory, nullptr);
-
-    vkDestroyBuffer(m_device, m_indexBuffer, nullptr);
-    vkFreeMemory(m_device, m_indexBufferMemory.memory, nullptr);
   }
 
-  void Model::createVertexBuffer(std::span<Model::Vertex> vertices, Buffer buffer, Memory memory)
+  void Model::createVertexBuffer(std::span<Model::Vertex> vertices)
   {
-    // assert((std::is_class<Vertex2D>(vertices[0]) || std::is_class<Vertex>(vertices[0])) && "Must be a Vertex type.");
-    // assert((typeid(vertices).hash_code() == typeid(Vertex2D).hash_code()) || (typeid(vertices).hash_code() == typeid(Vertex).hash_code()));
-
     assert(vertices.size() >= 3 && "Vertex count must be at least 3");
 
-    m_vertexBuffer.buffer = buffer.buffer;
-    m_vertexBufferMemory = memory;
-    m_verticesCount = vertices.size();
-    VkDeviceSize bufferSize{sizeof(vertices[0]) * vertices.size()};
+    auto vertexCount{static_cast<uint32_t>(vertices.size())};
+    auto vertexSize{sizeof(vertices[0])};
+    Buffer stagingBuffer{
+      m_device,
+      vertexCount,
+      vertexSize,
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    };
 
-    Buffer stagingBuffer;
-    Memory stagingBufferMemory;
+    m_vertexBuffer = std::make_unique<Buffer>(
+      m_device,
+      vertexCount,
+      vertexSize,
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    );
 
-    MemAllocator::createBuffer(m_device, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stagingBuffer);
-    MemAllocator::allocateBuffer(m_device, stagingBuffer, stagingBufferMemory, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    stagingBuffer.mapMemory();
+    stagingBuffer.write(vertices.data());
 
-    MemAllocator::mapBufferMemory(m_device, stagingBufferMemory.memory, bufferSize, 0, vertices.data());
-    //    MemAllocator::mapBufferMemory(m_device, stagingBufferMemory, indexBufferSize, vertexBufferSize, indices.data());
+    //TODO: vkFlush and vkInvalidate
+    //stagingBuffer.flush();
 
-    MemAllocator::copyBuffer(m_device, stagingBuffer, 0, m_vertexBuffer, buffer.memoryOffset, bufferSize);
-
-    vkDestroyBuffer(m_device, stagingBuffer, nullptr);
-    vkFreeMemory(m_device, stagingBufferMemory.memory, nullptr);
+    MemAllocator::copyBuffer(m_device, stagingBuffer.handle(), m_vertexBuffer->handle(), stagingBuffer.size());
   }
 
-  void Model::createIndexBuffer(std::span<uint32_t> indices, Buffer buffer, Memory memory)
+  void Model::createIndexBuffer(std::span<uint32_t> indices)
   {
     m_hasIndexBuffer = indices.size() > 0;
 
     if(!m_hasIndexBuffer)
       return;
 
-    m_indexBuffer.buffer = buffer.buffer;
-    m_indexBufferMemory = memory;
-    m_indicesCount = indices.size();
-    VkDeviceSize bufferSize{sizeof(indices[0]) * indices.size()};
+    auto indexCount{static_cast<uint32_t>(indices.size())};
+    auto indexSize{sizeof(indices[0])};
+    Buffer stagingBuffer{
+      m_device,
+      indexCount,
+      indexSize,
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    };
 
-    Buffer stagingBuffer;
-    Memory stagingBufferMemory;
+    m_indexBuffer = std::make_unique<Buffer>(
+      m_device,
+      indexCount,
+      indexSize,
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    );
 
-    MemAllocator::createBuffer(m_device, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stagingBuffer);
-    MemAllocator::allocateBuffer(m_device, stagingBuffer, stagingBufferMemory, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    stagingBuffer.mapMemory();
+    stagingBuffer.write(indices.data());
 
-    MemAllocator::mapBufferMemory(m_device, stagingBufferMemory.memory, bufferSize, 0, indices.data());
-    //    MemAllocator::mapBufferMemory(m_device, stagingBufferMemory, indexBufferSize, vertexBufferSize, indices.data());
+    //TODO: vkFlush and vkInvalidate
+    //stagingBuffer.flush();
 
-    MemAllocator::copyBuffer(m_device, stagingBuffer, 0, buffer, buffer.memoryOffset, bufferSize);
-
-    vkDestroyBuffer(m_device, stagingBuffer, nullptr);
-    vkFreeMemory(m_device, stagingBufferMemory.memory, nullptr);
+    MemAllocator::copyBuffer(m_device, stagingBuffer.handle(), m_indexBuffer->handle(), stagingBuffer.size());
   }
 
   /*
@@ -108,15 +114,15 @@ namespace vke
 
   void Model::bindBuffers(VkCommandBuffer commandBuffer)
   {
-    assert(m_verticesCount && "Vertex buffer not created.");
+    assert(m_vertexBuffer && "Vertex buffer not created.");
 
-    VkBuffer vertexBuffers[] = {m_vertexBuffer.buffer};
-    VkDeviceSize offsets[]{m_vertexBuffer.memoryOffset};
+    VkBuffer vertexBuffers[] = {m_vertexBuffer->handle()};
+    VkDeviceSize offsets[]{0};
 
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
     if(m_hasIndexBuffer)
-      vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer, m_indexBuffer.memoryOffset, VK_INDEX_TYPE_UINT32);
+      vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer->handle(), 0, VK_INDEX_TYPE_UINT32);
   };
 
   void Model::draw(VkCommandBuffer commandBuffer)
@@ -126,11 +132,11 @@ namespace vke
 
     if(m_hasIndexBuffer)
     {
-      vkCmdDrawIndexed(commandBuffer, m_indicesCount, 1, 0, 0, 0);
+      vkCmdDrawIndexed(commandBuffer, m_indexBuffer->elementCount(), 1, 0, 0, 0);
     }
     else
     {
-      vkCmdDraw(commandBuffer, m_verticesCount, 1, 0, 0);
+      vkCmdDraw(commandBuffer, m_vertexBuffer->elementCount(), 1, 0, 0);
     }
   }
 

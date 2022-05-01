@@ -112,7 +112,7 @@ namespace vke
   VkCommandBuffer Renderer::currentCommandBuffer() const
   {
     assert(m_hasFrameStarted && "Frame has not been started.");
-    return m_commandBuffers[m_currentFrame];
+    return m_commandBuffers[m_currentFrameIndex];
   }
 
   bool Renderer::beginFrame()
@@ -122,8 +122,8 @@ namespace vke
 
     //////////////////////////
 
-    vkWaitForFences(m_device, 1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
-    VkResult result{m_swapchain->acquireNextImage(m_imageAvailableSemaphore[m_currentFrame], &m_currentImageIndex)};
+    vkWaitForFences(m_device, 1, &m_inFlightFences[m_currentFrameIndex], VK_TRUE, UINT64_MAX);
+    VkResult result{m_swapchain->acquireNextImage(m_imageAvailableSemaphore[m_currentFrameIndex], &m_currentImageIndex)};
 
     if(result == VK_ERROR_OUT_OF_DATE_KHR)
     {
@@ -138,7 +138,7 @@ namespace vke
     if(m_imagesInFlight[m_currentImageIndex] != VK_NULL_HANDLE)
       vkWaitForFences(m_device, 1, &m_imagesInFlight[m_currentImageIndex], VK_TRUE, UINT64_MAX);
 
-    m_imagesInFlight[m_currentImageIndex] = m_inFlightFences[m_currentFrame];
+    m_imagesInFlight[m_currentImageIndex] = m_inFlightFences[m_currentFrameIndex];
 
     m_hasFrameStarted = true;
 
@@ -206,7 +206,7 @@ namespace vke
   {
     assert(m_hasFrameStarted && "Frame not started.");
 
-    vkCmdEndRenderPass( m_commandBuffers[m_currentFrame] );
+    vkCmdEndRenderPass( m_commandBuffers[m_currentFrameIndex] );
   }
 
   void Renderer::endFrame()
@@ -218,8 +218,8 @@ namespace vke
     if(vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
       throw std::runtime_error("Failed to record command buffer");
 
-    VkSemaphore waitSemaphores[]{m_imageAvailableSemaphore[m_currentFrame]};
-    VkSemaphore signalSemaphores[]{m_renderFinishedSemaphore[m_currentFrame]};
+    VkSemaphore waitSemaphores[]{m_imageAvailableSemaphore[m_currentFrameIndex]};
+    VkSemaphore signalSemaphores[]{m_renderFinishedSemaphore[m_currentFrameIndex]};
     VkPipelineStageFlags waitStages[]{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
     /*m_model->updateUniformBuffers(imageIndex, m_swapchain->extent());*/
@@ -235,9 +235,9 @@ namespace vke
       .pSignalSemaphores = signalSemaphores,
     };
 
-    vkResetFences(m_device, 1, &m_inFlightFences[m_currentFrame]);
+    vkResetFences(m_device, 1, &m_inFlightFences[m_currentFrameIndex]);
 
-    if(vkQueueSubmit(m_device.queues().graphics, 1, &submitInfo, m_inFlightFences[m_currentFrame]) != VK_SUCCESS)
+    if(vkQueueSubmit(m_device.queues().graphics, 1, &submitInfo, m_inFlightFences[m_currentFrameIndex]) != VK_SUCCESS)
       throw std::runtime_error("Failed to submit draw command buffer");
 
     m_hasFrameStarted = false;
@@ -247,7 +247,7 @@ namespace vke
   {
     assert(!m_hasFrameStarted && "Frame not finished.");
 
-    VkSemaphore signalSemaphores[]{m_renderFinishedSemaphore[m_currentFrame]};
+    VkSemaphore signalSemaphores[]{m_renderFinishedSemaphore[m_currentFrameIndex]};
     VkSwapchainKHR swapchains[]{*m_swapchain};
 
     VkPresentInfoKHR presentInfo{
@@ -271,6 +271,6 @@ namespace vke
       throw std::runtime_error("Failed to present swap chain image");
     }
 
-    ++m_currentFrame %= m_maxFramesInFlight;
+    ++m_currentFrameIndex %= m_maxFramesInFlight;
   }
 } // namespace vke

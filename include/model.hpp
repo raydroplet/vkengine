@@ -4,6 +4,7 @@
 #include "core.hpp"
 #include "device.hpp"
 #include "utils.hpp"
+#include "buffer.hpp"
 
 namespace vke
 {
@@ -20,8 +21,8 @@ namespace vke
     // << // void updateUniformBuffers(uint32_t currentImage, VkExtent2D swapChainExtent);
     // << // void recreateUniformBuffers(uint32_t swapChainImageCount);
 
-    void createVertexBuffer(std::span<Model::Vertex> vertices, Buffer buffer, Memory memory);
-    void createIndexBuffer(std::span<uint32_t> indices, Buffer buffer, Memory memory);
+    void createVertexBuffer(std::span<Model::Vertex> vertices);
+    void createIndexBuffer(std::span<uint32_t> indices);
 
     void bindBuffers(VkCommandBuffer commandBuffer);
     //  void bindVertexBuffer(VkCommandBuffer commandBuffer);
@@ -44,14 +45,8 @@ namespace vke
   private:
     Device& m_device;
 
-    size_t m_verticesCount{};
-    size_t m_indicesCount{};
-
-    Buffer m_vertexBuffer{};
-    Buffer m_indexBuffer{};
-
-    Memory m_vertexBufferMemory{};
-    Memory m_indexBufferMemory{};
+    std::unique_ptr<Buffer> m_vertexBuffer{};
+    std::unique_ptr<Buffer> m_indexBuffer{};
 
     // TODO: optimize
     bool m_hasIndexBuffer{};
@@ -60,7 +55,7 @@ namespace vke
     // Memory m_uniformBuffersMemory;
   };
 
-
+#if 0
   struct Vertex2D
   {
     glm::vec2 position;
@@ -69,6 +64,7 @@ namespace vke
     static std::vector<VkVertexInputAttributeDescription> getVertexInputAttributeDescription();
     static std::vector<VkVertexInputBindingDescription> getVertexInputBindingDescription();
   };
+#endif
 
   struct Model::Vertex
   {
@@ -99,14 +95,14 @@ namespace vke
   // TODO: either remove Vertex2D or find a way to insert them here
   struct Model::Builder
   {
+    Builder() = default;
+    Builder(std::filesystem::path path)
+    {
+      loadModel(path);
+    }
+
     std::vector<Vertex> vertices{};
     std::vector<uint32_t> indices{};
-
-    Buffer vertexBuffer{};
-    Buffer indexBuffer{};
-
-    Memory vertexBufferMemory{};
-    Memory indexBufferMemory{};
 
     void loadModel(std::filesystem::path path);
   };

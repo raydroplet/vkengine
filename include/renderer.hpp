@@ -44,6 +44,14 @@ namespace vke
     {
       return m_swapchain->imageCount();
     }
+    auto maxFramesInFlight() const -> uint32_t
+    {
+      return m_maxFramesInFlight;
+    }
+    auto frameIndex() const -> uint32_t
+    {
+      return m_currentFrameIndex;
+    }
 
   private:
     void allocateCommandBuffers();
@@ -78,7 +86,7 @@ namespace vke
     std::vector<VkFence> m_imagesInFlight;
 
     uint32_t m_maxFramesInFlight{};
-    uint32_t m_currentFrame{};
+    uint32_t m_currentFrameIndex{};
     uint32_t m_currentImageIndex{};
     bool m_hasFrameStarted{};
 

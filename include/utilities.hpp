@@ -20,5 +20,8 @@ namespace vke
     EventRelayer& eventRelayer;
     Coordinator& ecs;
     ModelManager& modelManager;
+    VkRenderPass renderPass;
+    VkExtent2D extent;
+    VkDescriptorSetLayout globalDescriptorSetLayout;
   };
 };

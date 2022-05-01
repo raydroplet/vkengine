@@ -4,13 +4,16 @@ namespace vke
 {
   //RenderSystem::RenderSystem(Device& device, ModelManager& modelManager, VkRenderPass renderPass, VkExtent2D extent) :
   //    m_device{device}, m_modelManager{modelManager}
-  RenderSystem::RenderSystem(Device& device, RenderSystemContext context, VkRenderPass renderPass, VkExtent2D extent) :
-      m_device{device}, m_context{context}
+  RenderSystem::RenderSystem(Device& device, RenderSystemContext context) :
+      m_device{device},
+      m_eventRelayer{context.eventRelayer},
+      m_ecs{context.ecs},
+      m_modelManager{context.modelManager}
   {
-    context.eventRelayer.setCallback(this, &RenderSystem::recreateGraphicsPipeline);
+    m_eventRelayer.setCallback(this, &RenderSystem::recreateGraphicsPipeline);
 
-    createPipelineLayout();
-    createGraphicsPipeline(renderPass, extent);
+    createPipelineLayout(context.globalDescriptorSetLayout);
+    createGraphicsPipeline(context.renderPass, context.extent);
   }
 
   RenderSystem::~RenderSystem()
@@ -46,7 +49,7 @@ namespace vke
       throw std::runtime_error("Failed to create descriptor set layout");
   }
 
-  void RenderSystem::createPipelineLayout()
+  void RenderSystem::createPipelineLayout(VkDescriptorSetLayout globalDescriptorSetLayout)
   {
     VkPushConstantRange pushConstantRange{
       .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -54,10 +57,12 @@ namespace vke
       .size = sizeof(SimplePushConstantData),
     };
 
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalDescriptorSetLayout};
+
     VkPipelineLayoutCreateInfo createInfo{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 0,    // 1,
-      .pSetLayouts = nullptr, //&m_descriptorSetLayout,
+      .setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size()),
+      .pSetLayouts = descriptorSetLayouts.data(),
       .pushConstantRangeCount = 1,
       .pPushConstantRanges = &pushConstantRange,
     };
@@ -144,41 +149,39 @@ namespace vke
     }
   }
 
-  void RenderSystem::renderEntities(VkCommandBuffer commandBuffer, Camera const& camera, std::span<EntityID> entities)
+  void RenderSystem::renderEntities(FrameInfo info, std::span<EntityID> entities)
   {
-    m_pipeline->bind(commandBuffer);
+    m_pipeline->bind(info.commandBuffer);
     /*m_pipeline->bindDescriptorSets(commandBuffer, &m_descriptorSets[imageIndex], m_pipelineLayout);*/
 
     // each object will use the same projectionView, so we calculate it once outside the loop
-    auto const& projectionView{camera.projection() * camera.view()}; //
+    // auto const& projectionView{info.camera.projection() * info.camera.view()}; //
+
+    vkCmdBindDescriptorSets(
+        info.commandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_pipelineLayout,
+        0, 1,
+        &info.globalDescriptorSet,
+        0, nullptr
+    );
+
+    //auto projectionView{info.camera.projection() * info.camera.view()};
 
     for(auto& entity : entities)
     {
       using namespace cmp;
-      Transform3D& transform{m_context.ecs.getComponent<Transform3D>(entity)};
-      Color& color{m_context.ecs.getComponent<Color>(entity)};
-      Common& common{m_context.ecs.getComponent<cmp::Common>(entity)};
+      Transform3D& transform{m_ecs.getComponent<Transform3D>(entity)};
+      Common& common{m_ecs.getComponent<cmp::Common>(entity)};
 
-      // transform.rotation = (j) * glm::two_pi<float>();
-      // transform.translation.x = {}; //i[entity];
-      // transform.translation.y = {}; //i[entity];
-
-//     transform.rotation.x = glm::mod(transform.rotation.x + 0.016f, glm::two_pi<float>());
-//    transform.rotation.y = glm::mod(transform.rotation.y + 0.014f, glm::two_pi<float>());
-//     transform.rotation.z = glm::mod(transform.rotation.z + 0.012f, glm::two_pi<float>());
-
-      // transform.rotation.z = glm::quarter_pi<float>();
-
-      auto modelMatrix{transform.mat4()};
-      auto normalMatrix{transform.normalMatrix()};
-
+      //auto modelMatrix{transform.mat4()};
       SimplePushConstantData push{
-        .transform = projectionView * modelMatrix,
-        //.modelMatrix = modelMatrix,
-        .normalMatrix = normalMatrix, // automatically convert the mat3 to mat4
+        //.transform = projectionView * modelMatrix,
+        .modelMatrix = transform.mat4(),
+        .normalMatrix = transform.normalMatrix(), // glm automatically converts the mat3 to mat4
       };
 
-      vkCmdPushConstants(commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SimplePushConstantData), &push);
+      vkCmdPushConstants(info.commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SimplePushConstantData), &push);
 
       // model.model->bindBuffers(commandBuffer);
       // model.model->drawIndexed(commandBuffer);
@@ -186,8 +189,8 @@ namespace vke
       if(!common.model())
         throw std::runtime_error("fix-me non-existent-model on-rendersystem-renderEntities()");
 
-      common.model()->bindBuffers(commandBuffer);
-      common.model()->draw(commandBuffer);
+      common.model()->bindBuffers(info.commandBuffer);
+      common.model()->draw(info.commandBuffer);
       //model.bindIndexBuffer(commandBuffer);
     }
   }
