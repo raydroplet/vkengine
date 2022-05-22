@@ -52,8 +52,9 @@ namespace vke
   {
     Config() = default;
 
-    //  you can optionally cache the config (when not in fullscreen) and recreate the pipeline using it
-    //  i am not doing this for now. do only if creating a new config is expensive enough
+    // TODO:
+    // you can optionally cache the config (when not in fullscreen) and recreate the pipeline using it
+    // I am not doing this for now. do only if creating a new config is expensive enough
     Config(const Config&);
     Config& operator=(const Config&);
 
@@ -63,7 +64,9 @@ namespace vke
     // std::vector<VkPipelineShaderStageCreateInfo> shaderStages{};
     VkViewport viewport{};
     VkRect2D scissor{};
-    VkPipelineVertexInputStateCreateInfo vertexInput{};
+    std::vector<VkVertexInputBindingDescription> bindingDescriptions{};
+    std::vector<VkVertexInputAttributeDescription> attributeDescriptions{};
+    //VkPipelineVertexInputStateCreateInfo vertexInput{};
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     VkPipelineViewportStateCreateInfo viewportState{};
     VkPipelineRasterizationStateCreateInfo rasterization{};

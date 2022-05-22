@@ -15,8 +15,9 @@ namespace vke
     TimeStep timeStep{};
     VkCommandBuffer commandBuffer{};
     Camera& camera;
+    Coordinator& ecs;
     VkDescriptorSet globalDescriptorSet{};
+
+    std::span<EntityID> entities{}; // TODO: find a way to pass entities to render systems according to the requested 'renderSystem entity signature'.
   };
 } // namespace vke
-
-//

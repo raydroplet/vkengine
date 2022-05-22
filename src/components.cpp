@@ -66,6 +66,7 @@ namespace vke::cmp
 
   glm::mat3 Transform3D::normalMatrix()
   {
+    // normal matrix (keep rotations, invert scales)
     const float s1{glm::sin(rotation.x)};
     const float c1{glm::cos(rotation.x)};
     const float s2{glm::sin(rotation.y)};

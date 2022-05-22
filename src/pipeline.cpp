@@ -21,13 +21,8 @@ namespace vke
 
   void Pipeline::defaultConfig(VkExtent2D extent, bool fullscreen, Config* config)
   {
-    config->vertexInput = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-      .vertexBindingDescriptionCount = 0,
-      .pVertexBindingDescriptions = nullptr, // Optional
-      .vertexAttributeDescriptionCount = 0,
-      .pVertexAttributeDescriptions = nullptr, // Optional
-    };
+    config->attributeDescriptions.reserve(2);
+    config->bindingDescriptions.reserve(2);
 
     config->inputAssembly = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
@@ -168,11 +163,19 @@ namespace vke
         .pSpecializationInfo = {},
       }};
 
+    VkPipelineVertexInputStateCreateInfo vertexInput{
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+      .vertexBindingDescriptionCount = static_cast<uint32_t>(config.bindingDescriptions.size()),
+      .pVertexBindingDescriptions = config.bindingDescriptions.data(),
+      .vertexAttributeDescriptionCount = static_cast<uint32_t>(config.attributeDescriptions.size()),
+      .pVertexAttributeDescriptions = config.attributeDescriptions.data(),
+    };
+
     VkGraphicsPipelineCreateInfo createInfo{
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
       .stageCount = std::size(shaderStages),
       .pStages = shaderStages,
-      .pVertexInputState = &config.vertexInput,
+      .pVertexInputState = &vertexInput,
       .pInputAssemblyState = &config.inputAssembly,
       .pViewportState = &config.viewportState,
       .pRasterizationState = &config.rasterization,
@@ -239,7 +242,8 @@ namespace vke
   {
     viewport = other.viewport;
     scissor = other.scissor;
-    vertexInput = other.vertexInput;
+    bindingDescriptions = other.bindingDescriptions;
+    attributeDescriptions = other.attributeDescriptions;
     inputAssembly = other.inputAssembly;
 
     viewportState = other.viewportState;

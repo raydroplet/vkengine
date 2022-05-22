@@ -377,19 +377,4 @@ void Device::destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMess
   if(function)
     function(instance, debugMessenger, pAllocator);
 }
-
-////////////////////////////////////////////////////////////
-
-void QueueFamily::operator=(uint32_t i)
-{
-  m_index = i;
-  m_hasValue = true;
-}
-
-bool Queues::isComplete()
-{
-  return graphicsFamily.hasValue() && transferFamily.hasValue() && presentFamily.hasValue();
-}
-
-////////////////////////////////////////////////////
 }

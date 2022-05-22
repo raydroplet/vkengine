@@ -70,7 +70,12 @@ public:
 
   bool operator!=(const QueueFamily& other) const { return m_index != other.m_index; }
   bool operator<(const QueueFamily& other) const { return operator!=(other); }
-  void operator=(uint32_t i);
+  void operator=(uint32_t i)
+  {
+    m_index = i;
+    m_hasValue = true;
+  }
+
   operator bool() const { return m_hasValue; }  //handy
 
 private:
@@ -101,7 +106,11 @@ struct Queues
   Queue transfer;
   Queue present;
 
-  bool isComplete();
+  bool isComplete() {
+    return graphicsFamily.hasValue() &&
+           transferFamily.hasValue() &&
+           presentFamily.hasValue();
+  }
 };
 
 class CommmandPools

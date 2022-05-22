@@ -42,6 +42,7 @@ namespace
 template<typename T>
 class multilist
 {
+  friend class Iterator<T>;
 public:
   using valueType = T;
   using iterator = Iterator<T>;
@@ -64,6 +65,7 @@ public:
 
   T& operator[](index i);
 
+private:
   // TODO: write a allocator that doubles the capacity of the vector
   std::vector<size_t> blocksSize_m;
   std::vector<size_t> blocksCapacity_m;

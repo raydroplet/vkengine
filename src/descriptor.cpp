@@ -120,7 +120,7 @@ namespace vke
       });
   }
 
-  void DescriptorWriter::write(VkDescriptorSet* descriptorSet)
+  void DescriptorWriter::allocAndUpdate(VkDescriptorSet* descriptorSet)
   {
     m_descriptorPool.allocate(m_descriptorSetLayout, descriptorSet);
     update(*descriptorSet);
@@ -131,7 +131,8 @@ namespace vke
     for(auto& e : m_writes)
       e.dstSet = descriptorSet;
 
-    vkUpdateDescriptorSets(m_descriptorSetLayout.m_device, m_writes.size(), m_writes.data(), 0, nullptr);
+    auto& device{m_descriptorSetLayout.m_device};
+    vkUpdateDescriptorSets(device, m_writes.size(), m_writes.data(), 0, nullptr);
   }
 
   //// DescriptorPool ////

@@ -12,10 +12,11 @@ namespace vke
   {
     loadEntities();
 
-    m_globalDescriptorPool = DescriptorPool::Builder{m_device}
-                               .setMaxDescriptorSets(m_renderer.maxFramesInFlight())
-                               .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, m_renderer.maxFramesInFlight())
-                               .build();
+    m_globalDescriptorPool =
+      DescriptorPool::Builder{m_device}
+        .setMaxDescriptorSets(m_renderer.maxFramesInFlight())
+        .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, m_renderer.maxFramesInFlight())
+        .build();
   }
 
   Program::~Program()
@@ -55,26 +56,26 @@ namespace vke
     ////////// DescriptorSet //////////
     VkDescriptorSet globalDescriptorSet{};
 
-    auto descriptorSetLayout = DescriptorSetLayout::Builder{m_device}
-                                 .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-                                 .build();
+    auto globalSetLayout =
+      DescriptorSetLayout::Builder{m_device}
+        .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
+        .build();
 
     auto bufferInfo{uniformBuffer.descriptorInfo()};
-    DescriptorWriter{*descriptorSetLayout, *m_globalDescriptorPool}
+    DescriptorWriter{*globalSetLayout, *m_globalDescriptorPool}
       .addBuffer(0, &bufferInfo)
-      .write(&globalDescriptorSet);
+      .allocAndUpdate(&globalDescriptorSet);
 
     ////////// RenderSystem //////////
     RenderSystemContext renderSystemContext{
       .eventRelayer = m_eventRelayer,
-      .ecs = m_ecs,
-      .modelManager = m_modelManager,
       .renderPass = m_renderer.renderPass(),
       .extent = m_renderer.swapchainExtent(),
-      .globalDescriptorSetLayout = *descriptorSetLayout,
+      .globalDescriptorSetLayout = *globalSetLayout,
     };
 
-    m_renderSystem = std::make_unique<RenderSystem>(m_device, renderSystemContext);
+    RenderSystem renderSystem{m_device, renderSystemContext};
+    PointLightSystem pointLightSystem{m_device, renderSystemContext};
 
     ////////// Rendering //////////
     KeyboardInput cameraController{m_ecs, m_window};
@@ -84,7 +85,8 @@ namespace vke
     m_ecs.addComponent(cameraEntity,
       cmp::Transform3D{
         .translation{-1.2f, -1.5f, 0.f},
-        .rotation{-glm::quarter_pi<double>(), glm::quarter_pi<double>(), 0.f}});
+        .rotation{-glm::quarter_pi<double>(), glm::quarter_pi<double>(), 0.f}
+        });
 
     // camera.setViewDirection(glm::vec3{0.f}, glm::vec3{0.0f, 0.0f, 2.5f});
     // camera.setViewTarget(glm::vec3{1.f, -2.f, 3.f}, glm::vec3{0.0f, 0.0f, 2.5f});
@@ -105,10 +107,10 @@ namespace vke
 
       ////////////////
       double speed{0.3};
-      for(auto& e : m_entities)
+      for(size_t i{}; i < m_entities.size() - 1; ++i)
       {
         speed += 0.1;
-        auto& eTransform{m_ecs.getComponent<cmp::Transform3D>(e)};
+        auto& eTransform{m_ecs.getComponent<cmp::Transform3D>(m_entities[i])};
         double rotX{eTransform.rotation.x + (speed * timeStep.count())};
         double rotY{eTransform.rotation.y + (speed / 2 * timeStep.count())};
         double rotZ{eTransform.rotation.z + (speed / 3 * timeStep.count())};
@@ -140,19 +142,24 @@ namespace vke
           .timeStep = timeStep,
           .commandBuffer = m_renderer.currentCommandBuffer(),
           .camera{camera},
+          .ecs = m_ecs,
           .globalDescriptorSet = globalDescriptorSet,
+          .entities = m_entities,
         };
 
+        glm::vec4 cameraPos = glm::vec4(m_ecs.getComponent<cmp::Transform3D>(cameraEntity).translation, 1.0);
         GlobalUbo ubo{
-          .projectionView = camera.projection() * camera.view(),
-          .lightDirection = {-1.f, -1.f, -1.f},
+          .projectionMatrix = camera.projection(),
+          .ViewMatrix = camera.view(),
+          .cameraPosition = cameraPos,
         };
         uniformBuffer.write(&ubo);
         uniformBuffer.flush();
 
         m_renderer.beginRenderPass();
 
-        m_renderSystem->renderEntities(info, m_entities);
+        renderSystem.render(info);
+        pointLightSystem.render(info);
 
         m_renderer.endRenderPass();
         m_renderer.endFrame();
@@ -179,7 +186,7 @@ namespace vke
     m_ecs.registerComponent<cmp::Color>();
 
     cmp::Transform3D transform3D{
-      .translation{-2.f, 0.f, 1.f},
+      .translation{-3.f, 0.f, 1.f},
       .scale{1.f, 1.f, 1.f},
       .rotation{
         {}, // glm::radians(-15.f),
@@ -195,15 +202,17 @@ namespace vke
     auto cube = m_ecs.createEntity();
     auto smoothVase = m_ecs.createEntity();
     auto smallVase = m_ecs.createEntity();
+    auto quad = m_ecs.createEntity();
 
     m_entities.push_back(flatVase);
-    m_entities.push_back(cube);
     m_entities.push_back(smoothVase);
     m_entities.push_back(smallVase);
+    m_entities.push_back(cube);
+    m_entities.push_back(quad);
 
     for(auto& e : m_entities)
     {
-      transform3D.translation.x += 1.0;
+      transform3D.translation.x += 0.8;
 
       m_ecs.addComponent<cmp::Transform3D>(e, transform3D);
       m_ecs.addComponent<cmp::Common>(e, common);
@@ -211,17 +220,24 @@ namespace vke
     }
 
     m_ecs.getComponent<cmp::Transform3D>(smallVase).scale = {1.f, 0.5f, 1.f};
+    m_ecs.getComponent<cmp::Transform3D>(quad).translation = {-0.5f, 0.5f, 1.f};
+    m_ecs.getComponent<cmp::Transform3D>(quad).scale = {3.f, 1.f, 3.f};
+
+    //Note: unexpected fragment shader behaviour when the y scale is 0.f
+     /* m_ecs.getComponent<cmp::Transform3D>(quad).scale.y = 0.f; */
 
     // Model::Builder builder{m_modelManager.cubeModelBuilder()};
     Model::Builder flatVaseBuilder{"models/flat_vase.obj"};
     Model::Builder cubeBuilder{"models/colored_cube.obj"};
     Model::Builder smoothBuilder{"models/smooth_vase.obj"};
     Model::Builder smallBuilder{"models/smooth_vase.obj"};
+    Model::Builder quadBuilder{"models/quad.obj"};
 
     m_modelManager.give(flatVaseBuilder, {flatVase});
     m_modelManager.give(cubeBuilder, {cube});
     m_modelManager.give(smoothBuilder, {smoothVase});
     m_modelManager.give(smallBuilder, {smallVase});
+    m_modelManager.give(quadBuilder, {quad});
     m_modelManager.createModels();
   }
 

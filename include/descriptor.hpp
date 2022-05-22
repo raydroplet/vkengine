@@ -114,7 +114,7 @@ namespace vke
     DescriptorWriter& addImage(uint32_t binding, VkDescriptorImageInfo* imageInfo);
     // TODO: DescriptorWriter& writeTexelBufferView();
 
-    void write(VkDescriptorSet* descriptorSet);
+    void allocAndUpdate(VkDescriptorSet* descriptorSet);
     void update(VkDescriptorSet& descriptorSet);
 
   private:

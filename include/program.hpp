@@ -7,7 +7,8 @@
 #include "input.hpp"
 #include "model.hpp"
 #include "modelManager.hpp"
-#include "renderSystem.hpp"
+#include "systems/renderSystem.hpp"
+#include "systems/pointLight.hpp"
 #include "descriptor.hpp"
 #include "renderer.hpp"
 #include "window.hpp"
@@ -16,8 +17,12 @@ namespace vke
 {
   struct GlobalUbo
   {
-    alignas(16) glm::mat4 projectionView{1.f};
-    alignas(16) glm::vec3 lightDirection{glm::normalize(glm::vec3{1.f, -3.f, -1.f})};
+    glm::mat4 projectionMatrix{1.f};
+    glm::mat4 ViewMatrix{1.f};
+    glm::vec4 ambientLightColor{1.f, 1.f, 1.f, .02f};
+    glm::vec3 lightPosition{-1.f, -1.f, -1.f};
+    alignas(16) glm::vec4 lightColor{1.f, 1.f, 1.f, 1.0f};
+    glm::vec4 cameraPosition{1.f};
   };
 
   class Program
@@ -46,8 +51,6 @@ namespace vke
     ModelManager m_modelManager;
 
     Renderer m_renderer;
-
-    std::unique_ptr<RenderSystem> m_renderSystem;
     //{m_device, m_modelManager, m_renderer.renderPass(), m_renderer.swapchainExtent()};
 
     std::unique_ptr<DescriptorPool> m_globalDescriptorPool{};

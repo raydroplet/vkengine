@@ -1,45 +1,70 @@
-CXX 	 = clang++
-CXXFLAGS = -c -g -std=c++20 $(WARNINGS) -I$(INCDIR)
+SHELL = /usr/bin/env bash
 
-WARNINGS = -pedantic-errors -Wall -Wextra -Weffc++ -fsanitize=undefined -Wno-unused-parameter
-LDFLAGS  = -fsanitize=undefined
-LDLIBS   = -lglfw -lvulkan -ldl -lpthread
+CXX 	 := clang++
+CXXFLAGS  = -c -g -std=c++20 $(WARNINGS) -I$(INCDIR)
 
-DEPENDENCIES = $(shell find $(SRCDIR) -name *.hpp)
-BINARY       = bin
-DEFINES      = -DGLM_ENABLE_EXPERIMENTAL
+WARNINGS := -pedantic-errors -Wall -Wextra -Weffc++ -fsanitize=undefined -Wno-unused-parameter
+LDFLAGS  := -fsanitize=undefined
+LDLIBS   := -lglfw -lvulkan -ldl -lpthread
 
-OBJDIR = build
-SRCDIR = src
-INCDIR = include
+BINARY   := bin
+DEFINES  := -DGLM_ENABLE_EXPERIMENTAL
 
-#$(shell find -type f -name "*.cpp")
-CPPS:= $(wildcard $(SRCDIR)/*.cpp)
-OBJS:= $(CPPS:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
+INCDIR         := include
+OBJDIR         := build
+SRCDIR         := src
+SHADER_DIR     := shaders
+SHADER_OBJ_DIR := $(OBJDIR)/shaders
 
-GF = "\e[033;32m"
-CF = "\e[033;36m"
-RF = "\e[033;31m"
-NF = "\e[033;39m"
+TEST_SRCDIR    := tests/src
+TEST_INCDIR    := tests/include
+TEST_OBJDIR    := tests/build
+TEST_BINDIR    := tests/bin
+TEST_BINARIES   = $(patsubst $(TEST_SRCDIR)/%.cpp,$(TEST_BINDIR)/%,$(TEST_CPPS))
 
-####
-#(wildcard $(ShaderDir)/*.frag)
-#$(wildcard $(ShaderDir)/*.vert)
+CPPS         := $(shell find $(SRCDIR) -type f -name *.cpp)
+TEST_CPPS    := $(shell find $(TEST_SRCDIR) -type f -name *.cpp)
+FRAG_SHADERS := $(shell find $(SHADER_DIR) -type f -name '*.frag')
+VERT_SHADERS := $(shell find $(SHADER_DIR) -type f -name '*.vert')
 
-SHADER_DIR=shaders
+OBJS              := $(CPPS:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
+TEST_OBJS         := $(TEST_CPPS:$(TEST_SRCDIR)/%.cpp=$(TEST_OBJDIR)/%.o)
+FRAG_SHADERS_OBJS := $(addprefix $(OBJDIR)/, $(addsuffix .spv, $(FRAG_SHADERS)))
+VERT_SHADERS_OBJS := $(addprefix $(OBJDIR)/, $(addsuffix .spv, $(VERT_SHADERS)))
+SHADER_OBJS       := $(FRAG_SHADERS_OBJS) $(VERT_SHADERS_OBJS)
 
-FRAG_SHADERS:= $(shell find $(SHADER_DIR) -type f -name "*.frag")
-FRAG_SHADERS_OBJS:= $(addsuffix .spv, $(addprefix $(OBJDIR)/, $(FRAG_SHADERS)))
+GF := "\e[033;32m"
+CF := "\e[033;36m"
+RF := "\e[033;31m"
+YF := "\e[033;33m"
+PF := "\e[033;35m"
+NF := "\e[033;39m"
 
-VERT_SHADERS:= $(shell find $(SHADER_DIR) -type f -name "*.vert")
-VERT_SHADERS_OBJS:= $(addsuffix .spv, $(addprefix $(OBJDIR)/, $(VERT_SHADERS)))
-SHADER_OBJS:= $(FRAG_SHADERS_OBJS) $(VERT_SHADERS_OBJS)
-####
+export TEST_TARGETS=
+TESTING=
 
+.PHONY: clean run all files new
+all: $(SHADER_OBJS) $(TEST_BINARIES) $(BINARY) test
 
-.PHONY: clean run all
-all: $(BINARY) $(SHADER_OBJS)
+# shaders #
+$(VERT_SHADERS_OBJS): $(SHADER_OBJ_DIR)/%.spv: $(SHADER_DIR)/%
+	@echo -e $(YF)[COMPILING .vert]$(NF)$(CF) $(subst $(SHADER_DIR)/,,$<)$(NF)
+	@glslc $< -o $@
 
+$(FRAG_SHADERS_OBJS): $(SHADER_OBJ_DIR)/%.spv: $(SHADER_DIR)/%
+	@echo -e $(YF)[COMPILING .frag]$(NF)$(CF) $(subst $(SHADER_DIR)/,,$<)$(NF)
+	@glslc $< -o $@
+
+# tests #
+$(TEST_BINARIES): $(TEST_OBJS)
+	@echo -e $(GF)[LINKING TEST]$(NF)
+	@$(CXX) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+
+$(TEST_OBJS): $(TEST_OBJDIR)/%.o: $(TEST_SRCDIR)/%.cpp $(SRCDIR)/%.cpp $(INCDIR)/%.hpp $(BINARY)
+	@echo -e $(GF)[COMPILING TEST]$(NF)$(CF) $(subst $(TEST_SRCDIR)/,,$<)$(NF)
+	@$(CXX) $(CXXFLAGS) $(DEFINES) $< -o $@
+
+# cpp #
 $(BINARY): $(OBJS)
 	@echo -e $(GF)[LINKING]$(NF)
 	@$(CXX) $(LDFLAGS) $^ -o $@ $(LDLIBS)
@@ -47,19 +72,15 @@ $(BINARY): $(OBJS)
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(INCDIR)/%.hpp
 	@echo -e $(GF)[COMPILING]$(NF)$(CF) $(subst $(SRCDIR)/,,$<)$(NF)
 	@$(CXX) $(CXXFLAGS) $(DEFINES) $< -o $@
+	$(eval TEST_TARGETS := $(TEST_TARGETS) $(TEST_BINDIR)/$*)
 
-
-#####
-$(VERT_SHADERS_OBJS): $(VERT_SHADERS)
-	glslc $< -o $@
-
-$(FRAG_SHADERS_OBJS): $(FRAG_SHADERS)
-	glslc $< -o $@
-#####
-
+# utilities
+test: $(TEST_BINARIES) $(BINARY)
+	$(eval TESTING := $(foreach bin,$(TEST_TARGETS),$(wildcard $(bin))))
+	$(foreach bin,$(TESTING), @echo -e $(GF)[TESTING]$(NF)$(CF) $(subst $(TEST_BINDIR)/,,$(bin))$(NF) && ./$(bin))
 
 clean:
-	@rm -f $(OBJS) $(BINARY)
+	@rm -f $(OBJS) $(BINARY) $(SHADER_OBJS) $(TEST_OBJS) $(TEST_BINARIES)
 
 run: $(BINARY) $(SHADER_OBJS)
 	./bin
@@ -81,4 +102,3 @@ files:
 	else \
 	  echo "Invalid input"; \
 	fi;
-

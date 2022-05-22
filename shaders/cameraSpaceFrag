@@ -1,0 +1,91 @@
+#version 450
+
+layout(location = 0) in vec3 inFragColor;
+layout(location = 1) in vec3 inFragWorldNormal;
+
+layout(location = 0) out vec4 outColor;
+
+layout(set = 0, binding = 0) uniform GlobalUbo
+{
+  mat4 projectionMatrix;
+  mat4 viewMatrix;
+  vec4 ambientLight;
+  vec3 lightPosition;
+  vec4 lightColor;
+  ivec2 windowSize;
+  float lightAttenuation;
+} ubo;
+
+layout(push_constant) uniform Push {
+  mat4 modelMatrix;
+  mat4 normalMatrix;
+} push;
+
+vec3 cameraSpaceFragPos()
+{
+  vec4 ndcPos;
+
+  const float farDepth  = 1; // to keep things a little simpler
+  const float nearDepth = 0; //
+  float depthRange = farDepth - nearDepth;
+
+  ndcPos.xy = ((2.0 * (gl_FragCoord.xy / ubo.windowSize.xy)) - 1.0);
+  ndcPos.z = (2.0 * gl_FragCoord.z - farDepth - nearDepth) / (farDepth - nearDepth);
+  ndcPos.w = 1.0;
+
+  vec4 clipPos = ndcPos / gl_FragCoord.w;
+
+  return vec3(inverse(ubo.projectionMatrix * ubo.viewMatrix) * clipPos);
+}
+
+vec3 attenuatedLightColor(in vec3 cameraSpaceFragPos, out vec3 lightDirection)
+{
+  vec3 lightDifference = vec3(ubo.viewMatrix * vec4(ubo.lightPosition, 1.0)) - cameraSpaceFragPos;
+  float lightDistanceSquared = dot(lightDifference, lightDifference);
+  lightDirection = lightDifference * inversesqrt(lightDistanceSquared); // normalizing
+
+  // float distFactor = bUseRSquare ? lightDistanceSquared : sqrt(lightDistanceSquared);
+  float distFactor = sqrt(lightDistanceSquared);
+  float lightIntensity = ubo.lightColor.w;
+
+  return ubo.lightColor.xyz * (lightIntensity / (1.0 + ubo.lightAttenuation * distFactor));
+}
+
+void main()
+{
+  vec3 cameraSpaceFragPos = cameraSpaceFragPos();
+  vec3 ambientLight = ubo.ambientLight.xyz * ubo.ambientLight.w; // apply intensity
+
+  vec3 lightDirection = vec3(0.0);
+  vec3 lightColor = attenuatedLightColor(cameraSpaceFragPos, lightDirection);
+  vec3 diffuseLight = lightColor * clamp(dot(normalize(inFragWorldNormal), normalize(lightDirection)), 0, 1);
+
+  outColor = vec4((ambientLight + diffuseLight) * inFragColor, 1.0);
+  // outputColor = (diffuseColor * attenIntensity * cosAngIncidence) + (diffuseColor * ambientIntensity);
+}
+
+#if 0
+/*
+  void vertPointLight()
+  {
+    outColor = vec4(inFragColor, 1.0f);
+  }
+
+  void fragPointLight()
+  {
+    vec3 directionToLight = ubo.lightPosition - inFragWorldPos;
+    float attenuation = 1.0 / dot(directionToLight, directionToLight);
+
+    vec3 lightColor = ubo.lightColor.xyz * ubo.lightColor.w * attenuation; // apply intensity + attenuation
+    vec3 ambientLight = ubo.ambientLight.xyz * ubo.ambientLight.w; // apply intensity
+    vec3 diffuseLight = lightColor * clamp(dot(normalize(inFragWorldNormal), normalize(directionToLight)), 0, 1);
+
+    outColor = vec4((diffuseLight + ambientLight) * inFragColor, 1.0);
+  }
+
+  void main()
+  {
+    fragPointLight();
+  }
+*/
+#endif

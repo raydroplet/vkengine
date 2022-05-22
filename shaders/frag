@@ -1,0 +1,47 @@
+#version 450
+
+layout (location = 0) in vec3 fragColor;
+layout (location = 1) in vec3 fragPosWorld;
+layout (location = 2) in vec3 fragNormalWorld;
+
+layout (location = 0) out vec4 outColor;
+
+layout(set = 0, binding = 0) uniform GlobalUbo {
+  mat4 projectionViewMatrix;
+  vec4 ambientLightColor; // w is intensity
+  vec3 lightPosition;
+  vec4 lightColor;
+} ubo;
+
+layout(push_constant) uniform Push {
+  mat4 modelMatrix;
+  mat4 normalMatrix;
+} push;
+
+void old()
+{
+  vec3 directionToLight = ubo.lightPosition - fragPosWorld;
+  float attenuation = 1.0 / dot(directionToLight, directionToLight); // distance squared
+
+  vec3 lightColor = ubo.lightColor.xyz * ubo.lightColor.w * attenuation;
+  vec3 ambientLight = ubo.ambientLightColor.xyz * ubo.ambientLightColor.w;
+  vec3 diffuseLight = lightColor * clamp(dot(normalize(fragNormalWorld), normalize(directionToLight)), 0, 1);
+  outColor = vec4(max(diffuseLight + ambientLight, 1) * fragColor, 1.0);
+}
+
+void main()
+{
+  // The relevant part
+  vec3 dirToLight = ubo.lightPosition - fragPosWorld;
+  float attenuation = 1.0 / dot(dirToLight, dirToLight); // decreases the light intensity according to the distance
+
+  float cosAngIncidence = dot(normalize(fragNormalWorld), normalize(dirToLight));
+  cosAngIncidence = max(cosAngIncidence, 0);
+
+  // applying intensity and attenuation to light and ambient light
+  vec3 lightColor = vec3(ubo.lightColor) * ubo.lightColor.w * attenuation; // vec3/.xyz -> same
+  vec3 ambientColor = ubo.ambientLightColor.xyz * ubo.ambientLightColor.w;
+  vec3 diffuseLight = lightColor * cosAngIncidence;
+
+  outColor = vec4(fragColor * (diffuseLight + ambientColor), 1.0);
+}
