@@ -3,12 +3,12 @@
 namespace vke
 {
   Program::Program() :
-      m_eventRelayer{},
-      m_window{m_eventRelayer},
-      m_device{m_window},
-      m_ecs{},
-      m_modelManager{m_device, m_ecs},
-      m_renderer{m_device, m_window, m_eventRelayer}
+    m_eventRelayer{},
+    m_window{m_eventRelayer},
+    m_device{m_window, std::getenv("ROOT_PATH")},
+    m_ecs{},
+    m_modelManager{m_device, m_ecs},
+    m_renderer{m_device, m_window, m_eventRelayer}
   {
     loadEntities();
 
@@ -21,8 +21,7 @@ namespace vke
 
   Program::~Program()
   {
-    for(auto& entity : m_entities)
-    {
+    for(auto& entity : m_entities) {
       m_ecs.destroyEntity(entity);
     }
 
@@ -85,8 +84,7 @@ namespace vke
     m_ecs.addComponent(cameraEntity,
       cmp::Transform3D{
         .translation{-1.2f, -1.5f, 0.f},
-        .rotation{-glm::quarter_pi<double>(), glm::quarter_pi<double>(), 0.f}
-        });
+        .rotation{-glm::quarter_pi<double>(), glm::quarter_pi<double>(), 0.f}});
 
     // camera.setViewDirection(glm::vec3{0.f}, glm::vec3{0.0f, 0.0f, 2.5f});
     // camera.setViewTarget(glm::vec3{1.f, -2.f, 3.f}, glm::vec3{0.0f, 0.0f, 2.5f});
@@ -96,8 +94,7 @@ namespace vke
     scTimePoint frameEndTime{};
     TimeStep timeStep{};
 
-    while(!m_window.shouldClose())
-    {
+    while(!m_window.shouldClose()) {
       frameEndTime = now();
       timeStep = frameEndTime - frameStartTime;
       frameStartTime = frameEndTime;
@@ -107,8 +104,7 @@ namespace vke
 
       ////////////////
       double speed{0.3};
-      for(size_t i{}; i < m_entities.size() - 1; ++i)
-      {
+      for(size_t i{}; i < m_entities.size() - 1; ++i) {
         speed += 0.1;
         auto& eTransform{m_ecs.getComponent<cmp::Transform3D>(m_entities[i])};
         double rotX{eTransform.rotation.x + (speed * timeStep.count())};
@@ -135,8 +131,7 @@ namespace vke
 
       // you could draw only when necessary, and repeatedly present the current image.
       // this can avoid needless draw() calls in more static scenes.
-      if(m_renderer.beginFrame())
-      {
+      if(m_renderer.beginFrame()) {
         FrameInfo info{
           .frameIndex = m_renderer.frameIndex(),
           .timeStep = timeStep,
@@ -210,8 +205,7 @@ namespace vke
     m_entities.push_back(cube);
     m_entities.push_back(quad);
 
-    for(auto& e : m_entities)
-    {
+    for(auto& e : m_entities) {
       transform3D.translation.x += 0.8;
 
       m_ecs.addComponent<cmp::Transform3D>(e, transform3D);
@@ -223,15 +217,16 @@ namespace vke
     m_ecs.getComponent<cmp::Transform3D>(quad).translation = {-0.5f, 0.5f, 1.f};
     m_ecs.getComponent<cmp::Transform3D>(quad).scale = {3.f, 1.f, 3.f};
 
-    //Note: unexpected fragment shader behaviour when the y scale is 0.f
-     /* m_ecs.getComponent<cmp::Transform3D>(quad).scale.y = 0.f; */
+    // Note: unexpected fragment shader behaviour when the y scale is 0.f
+    /* m_ecs.getComponent<cmp::Transform3D>(quad).scale.y = 0.f; */
 
     // Model::Builder builder{m_modelManager.cubeModelBuilder()};
-    Model::Builder flatVaseBuilder{"models/flat_vase.obj"};
-    Model::Builder cubeBuilder{"models/colored_cube.obj"};
-    Model::Builder smoothBuilder{"models/smooth_vase.obj"};
-    Model::Builder smallBuilder{"models/smooth_vase.obj"};
-    Model::Builder quadBuilder{"models/quad.obj"};
+    std::string root = m_device.assetsPath();
+    Model::Builder flatVaseBuilder{root + "/models/flat_vase.obj"};
+    Model::Builder cubeBuilder{root + "/models/colored_cube.obj"};
+    Model::Builder smoothBuilder{root + "/models/smooth_vase.obj"};
+    Model::Builder smallBuilder{root + "/models/smooth_vase.obj"};
+    Model::Builder quadBuilder{root + "/models/quad.obj"};
 
     m_modelManager.give(flatVaseBuilder, {flatVase});
     m_modelManager.give(cubeBuilder, {cube});

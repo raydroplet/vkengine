@@ -3,7 +3,7 @@
 namespace vke
 {
   Window::Window(EventRelayer& relayer) :
-      m_eventRelayer{relayer}
+    m_eventRelayer{relayer}
   {
     glfwInit();
   }
@@ -38,7 +38,6 @@ namespace vke
     ////////////////////////////
 
     // glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-
   }
 
   bool Window::shouldClose()
@@ -49,8 +48,7 @@ namespace vke
   void Window::handleMinimization()
   {
     // glfwGetFramebufferSize(m_window, &width, &height);
-    while(m_pixelsWidth == 0 || m_pixelsHeight == 0)
-    {
+    while(m_pixelsWidth == 0 || m_pixelsHeight == 0) {
       // glfwGetFramebufferSize(m_window, &width, &height);  //  already updated with the resize callback
       glfwWaitEvents();
     }
@@ -62,7 +60,7 @@ namespace vke
     window->m_framebufferResized = true;
     window->m_pixelsWidth = width;
     window->m_pixelsHeight = height;
-//    window->m_eventRelayer.queue(event::WindowResized{width, height});
+    //    window->m_eventRelayer.queue(event::WindowResized{width, height});
   }
 
   void Window::cursorCallback(GLFWwindow* glfwWindow, double posX, double posY)

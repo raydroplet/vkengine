@@ -29,7 +29,7 @@ namespace vke
     bool wasResized() const { return m_framebufferResized; }
     void resetResizedFlag() { m_framebufferResized = false; }
     bool isFullscreen() const { return m_fullscreen; }
-//    const MultiEventListener<event::WindowEvent>& multiListener() const { return m_multiListener; }
+    //    const MultiEventListener<event::WindowEvent>& multiListener() const { return m_multiListener; }
 
     Window(const Window&) = delete;
     Window& operator=(const Window&) = delete;

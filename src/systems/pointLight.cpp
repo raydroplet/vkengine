@@ -3,9 +3,9 @@
 namespace vke
 {
   PointLightSystem::PointLightSystem(Device& device, RenderSystemContext context) :
-      m_device{device},
-      m_eventRelayer{context.eventRelayer}
-      //m_modelManager{context.modelManager}
+    m_device{device},
+    m_eventRelayer{context.eventRelayer}
+  // m_modelManager{context.modelManager}
   {
     m_eventRelayer.setCallback(this, &PointLightSystem::recreateGraphicsPipeline);
 
@@ -40,8 +40,8 @@ namespace vke
     Pipeline::defaultConfig(extent, false, &config);
 
     Pipeline::ShaderPaths shaderPaths{
-      .vert = "build/shaders/pointLight.vert.spv",
-      .frag = "build/shaders/pointLight.frag.spv",
+      .vert = m_device.assetsPath().string() + "/build/shaders/pointLight.vert.spv",
+      .frag = m_device.assetsPath().string() + "/build/shaders/pointLight.frag.spv",
     };
 
     config.renderPass = renderPass;
@@ -65,13 +65,12 @@ namespace vke
     // auto const& projectionView{info.camera.projection() * info.camera.view()}; //
 
     vkCmdBindDescriptorSets(
-        info.commandBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_pipelineLayout,
-        0, 1,
-        &info.globalDescriptorSet,
-        0, nullptr
-    );
+      info.commandBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS,
+      m_pipelineLayout,
+      0, 1,
+      &info.globalDescriptorSet,
+      0, nullptr);
 
     vkCmdDraw(info.commandBuffer, 6, 1, 0, 0);
   }

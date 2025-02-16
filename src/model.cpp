@@ -17,7 +17,7 @@ namespace std
 namespace vke
 {
   Model::Model(Device& device, Builder& builder) :
-      m_device{device}
+    m_device{device}
   {
     createVertexBuffer(builder.vertices);
     createIndexBuffer(builder.indices);
@@ -46,14 +46,13 @@ namespace vke
       vertexCount,
       vertexSize,
       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    );
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     stagingBuffer.mapMemory();
     stagingBuffer.write(vertices.data());
 
-    //TODO: vkFlush and vkInvalidate
-    //stagingBuffer.flush();
+    // TODO: vkFlush and vkInvalidate
+    // stagingBuffer.flush();
 
     MemAllocator::copyBuffer(m_device, stagingBuffer.handle(), m_vertexBuffer->handle(), stagingBuffer.size());
   }
@@ -80,14 +79,13 @@ namespace vke
       indexCount,
       indexSize,
       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    );
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     stagingBuffer.mapMemory();
     stagingBuffer.write(indices.data());
 
-    //TODO: vkFlush and vkInvalidate
-    //stagingBuffer.flush();
+    // TODO: vkFlush and vkInvalidate
+    // stagingBuffer.flush();
 
     MemAllocator::copyBuffer(m_device, stagingBuffer.handle(), m_indexBuffer->handle(), stagingBuffer.size());
   }
@@ -130,12 +128,9 @@ namespace vke
     // assert(!m_indicesCount && "Using a index buffer, drawIndexed() instead.");
     // assert(m_indicesCount && "Index buffer not created, draw() instead.");
 
-    if(m_hasIndexBuffer)
-    {
+    if(m_hasIndexBuffer) {
       vkCmdDrawIndexed(commandBuffer, m_indexBuffer->elementCount(), 1, 0, 0, 0);
-    }
-    else
-    {
+    } else {
       vkCmdDraw(commandBuffer, m_vertexBuffer->elementCount(), 1, 0, 0);
     }
   }
@@ -216,8 +211,7 @@ namespace vke
     std::vector<tinyobj::material_t> materials{};
     std::string warn{}, err{};
 
-    if(!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path.c_str()))
-    {
+    if(!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path.c_str())) {
       throw std::runtime_error("[Failed to load model]" + warn + err);
     }
 
@@ -225,15 +219,12 @@ namespace vke
     indices.clear();
 
     std::unordered_map<Vertex, uint32_t> uniqueVertices{};
-    for(auto const& shape : shapes)
-    {
-      for(auto const& index : shape.mesh.indices)
-      {
+    for(auto const& shape : shapes) {
+      for(auto const& index : shape.mesh.indices) {
         Vertex vertex{};
 
         // inexistent if -1
-        if(index.vertex_index >= 0)
-        {
+        if(index.vertex_index >= 0) {
           // each vertexertex has 3 packed values
           vertex.position = {
             attrib.vertices[3 * index.vertex_index + 0],
@@ -251,8 +242,7 @@ namespace vke
           };
         }
 
-        if(index.normal_index >= 0)
-        {
+        if(index.normal_index >= 0) {
           vertex.normal = {
             attrib.normals[3 * index.normal_index + 0],
             attrib.normals[3 * index.normal_index + 1],
@@ -260,8 +250,7 @@ namespace vke
           };
         }
 
-        if(index.texcoord_index >= 0)
-        {
+        if(index.texcoord_index >= 0) {
           vertex.uv = {
             attrib.texcoords[2 * index.texcoord_index + 0],
             attrib.texcoords[2 * index.texcoord_index + 1],
@@ -269,8 +258,7 @@ namespace vke
         }
 
         // For every vertex of the loaded file we check if he already exists on the map. If not then its index in the builder vertices vector is added to the map.
-        if(!uniqueVertices.contains(vertex))
-        {
+        if(!uniqueVertices.contains(vertex)) {
           uniqueVertices[vertex] = vertices.size();
           vertices.push_back(vertex);
         }

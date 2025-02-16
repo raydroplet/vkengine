@@ -2,9 +2,15 @@
 
 namespace vke
 {
-  Device::Device(Window& window) :
-      window(window)
+  Device::Device(Window& window, char* rootPath) :
+    window{window}
   {
+    if(!rootPath) {
+      throw std::runtime_error("Undefined ROOT_PATH environment variable");
+    } else {
+      m_rootPath = std::filesystem::path{rootPath};
+    }
+
     createInstance();
     setupDebugMessenger();
     window.create(m_instance); //  also creates a surface
@@ -39,15 +45,12 @@ namespace vke
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
-    if(enableValidationLayers)
-    {
+    if(enableValidationLayers) {
       createInfo.enabledLayerCount = m_validationLayers.size();
       createInfo.ppEnabledLayerNames = m_validationLayers.data();
       populateDebugMessengerCreateInfo(debugMessengerCreateInfo);
       createInfo.pNext = static_cast<VkDebugUtilsMessengerCreateInfoEXT*>(&debugMessengerCreateInfo);
-    }
-    else
-    {
+    } else {
       createInfo.enabledLayerCount = 0;
       createInfo.ppEnabledLayerNames = nullptr;
     }
@@ -67,12 +70,10 @@ namespace vke
     availableLayers.resize(layerCount);
     vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-    for(const auto& layer : m_validationLayers)
-    {
+    for(const auto& layer : m_validationLayers) {
       if(std::find_if(availableLayers.begin(), availableLayers.end(), [&layer](const VkLayerProperties& availableLayer) {
            return std::strcmp(layer, availableLayer.layerName) == 0;
-         }) == availableLayers.end())
-      {
+         }) == availableLayers.end()) {
         return false;
       }
     }
@@ -83,12 +84,10 @@ namespace vke
   bool Device::checkDeviceExtensionsSupport()
   {
     const auto& availableExtensions = m_physicalDeviceInfo.availableExtensions;
-    for(const auto& deviceExtension : m_deviceExtensions)
-    {
+    for(const auto& deviceExtension : m_deviceExtensions) {
       if(std::find_if(availableExtensions.begin(), availableExtensions.end(), [&deviceExtension](const auto& availableExtension) {
            return std::strcmp(deviceExtension, availableExtension.extensionName) == 0;
-         }) == availableExtensions.end())
-      {
+         }) == availableExtensions.end()) {
         return false;
       }
     }
@@ -141,14 +140,12 @@ namespace vke
     std::vector<VkPhysicalDevice> devices(deviceCount);
     vkEnumeratePhysicalDevices(m_instance, &deviceCount, devices.data());
 
-    for(const auto& device : devices)
-    {
+    for(const auto& device : devices) {
       m_physicalDevice = device;
 
       queryPhysicalDeviceInfo(device);
       findQueueIndices();
-      if(isDeviceSuitable())
-      {
+      if(isDeviceSuitable()) {
         // logMemoryInfo();
         return;
       }
@@ -164,8 +161,7 @@ namespace vke
     vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memProperties);
 
     std::cout << "\n[Memory Types]  [" << memProperties.memoryTypeCount << "]\n\n";
-    for(uint32_t i{}; i < memProperties.memoryTypeCount; ++i)
-    {
+    for(uint32_t i{}; i < memProperties.memoryTypeCount; ++i) {
       const auto memoryType = memProperties.memoryTypes;
       const auto memoryHeap = memProperties.memoryHeaps;
 
@@ -198,8 +194,7 @@ namespace vke
     }
 
     std::cout << "\n[Memory Heaps]   [" << memProperties.memoryHeapCount << "]\n";
-    for(uint32_t i{}; i < memProperties.memoryHeapCount; ++i)
-    {
+    for(uint32_t i{}; i < memProperties.memoryHeapCount; ++i) {
       const auto memoryHeap = memProperties.memoryHeaps;
 
       std::cout << '\n';
@@ -247,8 +242,7 @@ namespace vke
     queueCreateInfos.reserve(uniqueQueueFamilies.size());
 
     float priorities[]{1.0}; // TODO: consider the support for multiple queues (and handle priorities better)
-    for(auto& queueFamily : uniqueQueueFamilies)
-    {
+    for(auto& queueFamily : uniqueQueueFamilies) {
       VkDeviceQueueCreateInfo createInfo{};
       createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
       createInfo.flags = {};
@@ -282,8 +276,7 @@ namespace vke
   {
     const auto& info = m_physicalDeviceInfo;
 
-    for(size_t i{0}; i < info.queueFamilyProperties.size(); ++i)
-    {
+    for(size_t i{0}; i < info.queueFamilyProperties.size(); ++i) {
       if(info.queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
         m_queues.graphicsFamily = i;
 
@@ -321,8 +314,7 @@ namespace vke
 
     VkCommandPool* commandPools[]{&m_commandPools.graphics, &m_commandPools.transfer};
 
-    for(size_t i = 0; i < std::size(commandPools); ++i)
-    {
+    for(size_t i = 0; i < std::size(commandPools); ++i) {
       if(vkCreateCommandPool(m_device, &createInfo[i], nullptr, commandPools[i]) != VK_SUCCESS)
         throw std::runtime_error("Failed to create command pool");
     }
@@ -330,17 +322,13 @@ namespace vke
 
   VkFormat Device::findSupportedFormat(std::span<VkFormat> candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
   {
-    for(VkFormat format : candidates)
-    {
+    for(VkFormat format : candidates) {
       VkFormatProperties properties;
       vkGetPhysicalDeviceFormatProperties(m_physicalDevice, format, &properties);
 
-      if(((properties.optimalTilingFeatures & tiling) == tiling) && ((properties.optimalTilingFeatures & features) == features))
-      {
+      if(((properties.optimalTilingFeatures & tiling) == tiling) && ((properties.optimalTilingFeatures & features) == features)) {
         return format;
-      }
-      else if(((properties.linearTilingFeatures & tiling) == tiling) && ((properties.linearTilingFeatures & features) == features))
-      {
+      } else if(((properties.linearTilingFeatures & tiling) == tiling) && ((properties.linearTilingFeatures & features) == features)) {
         return format;
       }
     }
@@ -348,33 +336,32 @@ namespace vke
     throw std::runtime_error("Failed to find supported format.");
   }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL Device::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
-{
-  static std::unordered_map<int, const char*> severity{
-    {VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT, "Verbose"},
-    {VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT, "Info"},
-    {VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT, "Warning"},
-    {VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT, "Error"}};
-
-  if(messageSeverity > VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+  VKAPI_ATTR VkBool32 VKAPI_CALL Device::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
   {
-    std::cerr << clr::red << "[" << severity[messageSeverity] << "] " << clr::white
-              << pCallbackData->pMessage << std::endl;
+    static std::unordered_map<int, const char*> severity{
+      {VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT, "Verbose"},
+      {VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT, "Info"},
+      {VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT, "Warning"},
+      {VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT, "Error"}};
+
+    if(messageSeverity > VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+      std::cerr << clr::red << "[" << severity[messageSeverity] << "] " << clr::white
+                << pCallbackData->pMessage << std::endl;
+    }
+
+    return VK_FALSE;
   }
 
-  return VK_FALSE;
-}
+  VkResult Device::createDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
+  {
+    auto function{reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"))};
+    return function ? function(instance, pCreateInfo, pAllocator, pDebugMessenger) : VK_ERROR_EXTENSION_NOT_PRESENT;
+  }
 
-VkResult Device::createDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
-{
-  auto function{reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"))};
-  return function ? function(instance, pCreateInfo, pAllocator, pDebugMessenger) : VK_ERROR_EXTENSION_NOT_PRESENT;
-}
-
-void Device::destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
-{
-  auto function{reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"))};
-  if(function)
-    function(instance, debugMessenger, pAllocator);
-}
+  void Device::destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
+  {
+    auto function{reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"))};
+    if(function)
+      function(instance, debugMessenger, pAllocator);
+  }
 }

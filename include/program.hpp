@@ -3,14 +3,14 @@
 #include "allocator.hpp"
 #include "buffer.hpp"
 #include "camera.hpp"
+#include "descriptor.hpp"
 #include "events.hpp"
 #include "input.hpp"
 #include "model.hpp"
 #include "modelManager.hpp"
-#include "systems/renderSystem.hpp"
-#include "systems/pointLight.hpp"
-#include "descriptor.hpp"
 #include "renderer.hpp"
+#include "systems/pointLight.hpp"
+#include "systems/renderSystem.hpp"
 #include "window.hpp"
 
 namespace vke
@@ -55,5 +55,6 @@ namespace vke
 
     std::unique_ptr<DescriptorPool> m_globalDescriptorPool{};
     std::vector<EntityID> m_entities;
+    std::filesystem::path m_modelsPath;
   };
 } // namespace vke

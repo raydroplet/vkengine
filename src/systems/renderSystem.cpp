@@ -3,9 +3,9 @@
 namespace vke
 {
   RenderSystem::RenderSystem(Device& device, RenderSystemContext context) :
-      m_device{device},
-      m_eventRelayer{context.eventRelayer}
-      //m_modelManager{context.modelManager}
+    m_device{device},
+    m_eventRelayer{context.eventRelayer}
+  // m_modelManager{context.modelManager}
   {
     m_eventRelayer.setCallback(this, &RenderSystem::recreateGraphicsPipeline);
 
@@ -46,8 +46,8 @@ namespace vke
     Pipeline::defaultConfig(extent, false, &config);
 
     Pipeline::ShaderPaths shaderPaths{
-      .vert = "build/shaders/shader.vert.spv",
-      .frag = "build/shaders/shader.frag.spv",
+      .vert = m_device.assetsPath().string() + "/build/shaders/shader.vert.spv",
+      .frag = m_device.assetsPath().string() + "/build/shaders/shader.frag.spv",
     };
 
     config.bindingDescriptions = Model::Vertex::getVertexInputBindingDescription();
@@ -73,23 +73,21 @@ namespace vke
     // auto const& projectionView{info.camera.projection() * info.camera.view()}; //
 
     vkCmdBindDescriptorSets(
-        info.commandBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_pipelineLayout,
-        0, 1,
-        &info.globalDescriptorSet,
-        0, nullptr
-    );
+      info.commandBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS,
+      m_pipelineLayout,
+      0, 1,
+      &info.globalDescriptorSet,
+      0, nullptr);
 
-    //auto projectionView{info.camera.projection() * info.camera.view()};
+    // auto projectionView{info.camera.projection() * info.camera.view()};
 
-    for(auto& entity : info.entities)
-    {
+    for(auto& entity : info.entities) {
       using namespace cmp;
       Transform3D& transform{info.ecs.getComponent<Transform3D>(entity)};
       Common& common{info.ecs.getComponent<cmp::Common>(entity)};
 
-      //auto modelMatrix{transform.mat4()};
+      // auto modelMatrix{transform.mat4()};
       SimplePushConstantData push{
         //.transform = projectionView * modelMatrix,
         .modelMatrix = transform.mat4(),
@@ -106,7 +104,7 @@ namespace vke
 
       common.model()->bindBuffers(info.commandBuffer);
       common.model()->draw(info.commandBuffer);
-      //model.bindIndexBuffer(commandBuffer);
+      // model.bindIndexBuffer(commandBuffer);
     }
   }
 } // namespace vke

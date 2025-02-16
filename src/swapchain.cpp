@@ -3,20 +3,21 @@
 namespace vke
 {
   Swapchain::Swapchain(Device& device, Window& window, std::unique_ptr<Swapchain> pOldSwapchain) :
-      m_device{device}, m_window{window}
+    m_device{device}, m_window{window}
   {
-    VkSwapchainKHR oldSwapchain = (pOldSwapchain ? *pOldSwapchain : VK_NULL_HANDLE);
+    // VkSwapchainKHR oldSwapchain = (pOldSwapchain ? *pOldSwapchain : VK_NULL_HANDLE);
+    VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE;
+    if(pOldSwapchain) {
+      VkSwapchainKHR oldSwapchain = *pOldSwapchain;
+    }
 
-    if(!oldSwapchain)
-    {
+    if(!oldSwapchain) {
       querySupportDetails();
       chooseSurfaceFormat();
       choosePresentMode();
       chooseExtent();
       findDepthFormat(&m_info.depthFormat);
-    }
-    else
-    {
+    } else {
       m_details = std::move(pOldSwapchain->m_details);
       m_info = std::move(pOldSwapchain->m_info);
 
@@ -67,14 +68,11 @@ namespace vke
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     uint32_t indices[]{m_device.queues().graphicsFamily, m_device.queues().presentFamily};
-    if(m_device.queues().graphicsFamily != m_device.queues().presentFamily)
-    {
+    if(m_device.queues().graphicsFamily != m_device.queues().presentFamily) {
       createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
       createInfo.queueFamilyIndexCount = 2;
       createInfo.pQueueFamilyIndices = indices;
-    }
-    else
-    {
+    } else {
       createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
       createInfo.queueFamilyIndexCount = {}; //  0;
       createInfo.pQueueFamilyIndices = {};   // nullptr;
@@ -97,12 +95,9 @@ namespace vke
 
   void Swapchain::querySupportDetails(VkSurfaceCapabilitiesKHR* capabilities)
   {
-    if(capabilities)
-    {
+    if(capabilities) {
       vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_device.physical(), m_window.surface(), capabilities);
-    }
-    else
-    {
+    } else {
       vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_device.physical(), m_window.surface(), &m_details.capabilities);
 
       uint32_t count{};
@@ -134,8 +129,7 @@ namespace vke
 
   void Swapchain::chooseSurfaceFormat()
   {
-    for(const auto& surfaceFormat : m_details.formats)
-    {
+    for(const auto& surfaceFormat : m_details.formats) {
       if(surfaceFormat.format == VK_FORMAT_B8G8R8A8_UNORM && surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         m_info.surfaceFormat = surfaceFormat;
     }
@@ -146,12 +140,9 @@ namespace vke
   void Swapchain::chooseExtent()
   {
     const auto& capabilities = m_details.capabilities;
-    if(capabilities.currentExtent.width /*!=*/ == UINT32_MAX)
-    {
+    if(capabilities.currentExtent.width /*!=*/ == UINT32_MAX) {
       m_info.extent = capabilities.currentExtent;
-    }
-    else
-    {
+    } else {
       int width, height;
       glfwGetFramebufferSize(m_window, &width, &height);
 
@@ -165,8 +156,7 @@ namespace vke
   void Swapchain::createImageViews()
   {
     imageViews.resize(images.size());
-    for(size_t i = 0; i < images.size(); ++i)
-    {
+    for(size_t i = 0; i < images.size(); ++i) {
       VkImageViewCreateInfo createInfo{};
       createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
       createInfo.image = images[i];
@@ -182,8 +172,7 @@ namespace vke
       createInfo.subresourceRange.baseArrayLayer = 0;
       createInfo.subresourceRange.layerCount = 1;
 
-      if(vkCreateImageView(m_device, &createInfo, nullptr, &imageViews[i]) != VK_SUCCESS)
-      {
+      if(vkCreateImageView(m_device, &createInfo, nullptr, &imageViews[i]) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create image views");
       }
     }
@@ -213,8 +202,7 @@ namespace vke
       .layerCount = 1,
     };
 
-    if(vkCreateImageView(m_device, &createInfo, nullptr, imageView) != VK_SUCCESS)
-    {
+    if(vkCreateImageView(m_device, &createInfo, nullptr, imageView) != VK_SUCCESS) {
       throw std::runtime_error("Failed to create image view");
     }
   }
@@ -303,8 +291,7 @@ namespace vke
     createInfo.height = m_info.extent.height;
     createInfo.layers = 1;
 
-    for(size_t i = 0; i < imageViews.size(); ++i)
-    {
+    for(size_t i = 0; i < imageViews.size(); ++i) {
       VkImageView attachments[]{
         imageViews[i],
         m_depthImageView,
@@ -379,7 +366,7 @@ namespace vke
   {
     const uint32_t& w = m_info.extent.width;
     const uint32_t& h = m_info.extent.height;
-    //return static_cast<float>(std::max(w, h)) / static_cast<float>(std::min(w, h));
+    // return static_cast<float>(std::max(w, h)) / static_cast<float>(std::min(w, h));
     return static_cast<float>(w) / static_cast<float>(h);
   }
 } // namespace vke
