@@ -31,8 +31,8 @@ A simple 3D rendering engine built from the ground up using the Vulkan 1.0 API. 
 
 # Building the Project
 Before building the project, be sure you have the following installed on your system:
-- **Nix:** `nix-shell` provides an environment with required system dependencies
-- **Xmake:** Simple cross-platform build system
+- **[Nix](https://nixos.org/download/#nix-install-linux):** `nix-shell` provides an environment with required system dependencies
+- **[Xmake](https://xmake.io/):** Simple cross-platform build system
 
 Clone the repository:
 
