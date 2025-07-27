@@ -38,7 +38,7 @@ namespace vke
     Coordinator& m_ecs;
     KeyMappings m_keys{};
     float m_moveSpeed{1.25f};
-    float m_lookSpeed{0.45f};
+    float m_lookSpeed{0.150f};
     std::pair<double, double> lastCursorPos{};
   };
 }; // namespace vke

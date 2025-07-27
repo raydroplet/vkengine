@@ -53,8 +53,7 @@ namespace vke
     float top_y{-1.f};
     float bottom_y{1.f};
 
-    if(wh_aspectRatio < 1.f)
-    {
+    if(wh_aspectRatio < 1.f) {
       right_x = 1.f;
       left_x = -1.f;
       top_y = (1 / -wh_aspectRatio);   // convert to hw_ar
@@ -69,8 +68,7 @@ namespace vke
     assert(glm::abs(wh_aspectRatio - std::numeric_limits<float>::epsilon() > 0.f));
 
     float hw_aspectRatio{1.f}; // hw -> height/width
-    if(wh_aspectRatio - std::numeric_limits<float>::epsilon() < 1.0f)
-    {
+    if(wh_aspectRatio - std::numeric_limits<float>::epsilon() < 1.0f) {
       hw_aspectRatio = 1 / wh_aspectRatio; // convert to hw_ar
       wh_aspectRatio = 1.0f;
     }
