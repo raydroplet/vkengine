@@ -28,7 +28,7 @@ A simple 3D rendering engine built from the ground up using the Vulkan 1.0 API. 
 * **GLM:** For C++ mathematics (vectors, matrices).
 * **tinyobjloader:** For parsing `.obj` model files.
 
-# Building the Project
+## Building the Project
 Before building the project, be sure you have the following installed on your system:
 - **[Nix](https://nixos.org/download/#nix-install-linux):** `nix-shell` provides an environment with required system dependencies
 - **[Xmake](https://xmake.io/):** Simple cross-platform build system
@@ -50,12 +50,12 @@ Run the Application:
 
     $ xmake run
 
-## ⌨️ Controls
+### ⌨️ Controls
 - **Move Forward/Left/Back/Right**: `W`, `A`, `S`, `D`
 - **Move Up/Down**: `Spacebar`, `Left Shift`
 - **Look Up/Down/Left/Right**: `Up`, `Down`, `Left`, `Right` arrow keys
 
-# Special Acknowledgments
+## Special Acknowledgments
 - [Vulkan Tutorial](https://vulkan-tutorial.com/): Vulkan API explanation and usage
 - [Brenda Galea](https://www.youtube.com/@BrendanGalea): Engine architecture and avanced features
 <!--
