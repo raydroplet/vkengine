@@ -20,18 +20,26 @@ if is_mode "debug" then
   -- add_ldflags(sanitize, "-lubsan")
 end
 
+-- Get the project root
+local project_root = os.projectdir()
+
 target "program"
-set_default(true)
-set_kind "binary"
-add_defines "GLM_ENABLE_EXPERIMENTAL"
-add_packages("vulkansdk", "glfw", "glm", "tinyobjloader")
-add_includedirs "include"
-add_files "src/**.cpp"
+  set_default(true)
+  set_kind "binary"
+  add_defines "GLM_ENABLE_EXPERIMENTAL"
+  add_packages("vulkansdk", "glfw", "glm", "tinyobjloader")
+  add_includedirs "include"
+  add_files "src/**.cpp"
+  on_load(function (target)
+      -- Export environment variable
+      os.setenv("ROOT_PATH", project_root)
+  end)
 
 target "shaders"
-set_kind "shared"
-add_rules("utils.glsl2spv", { outputdir = "build/shaders/" })
-add_files("shaders/*.vert", "shaders/*.frag")
-add_packages "glslang"
+  set_kind "shared"
+  add_rules("utils.glsl2spv", { outputdir = "build/shaders/" })
+  add_files("shaders/*.vert", "shaders/*.frag")
+  add_packages "glslang"
+
 
 --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---

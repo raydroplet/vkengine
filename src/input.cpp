@@ -13,19 +13,19 @@ namespace vke
   {
     glm::vec3 rotate{0.f};
 
-    auto cursorPos{m_window.cursorPos()};
-    rotate.y = ((cursorPos.first - lastCursorPos.first)) * m_lookSpeed;
-    rotate.x = ((lastCursorPos.second - cursorPos.second)) * m_lookSpeed;
-    lastCursorPos = cursorPos;
+    // auto cursorPos{m_window.cursorPos()};
+    // rotate.y = ((cursorPos.first - lastCursorPos.first)) * m_lookSpeed;
+    // rotate.x = ((lastCursorPos.second - cursorPos.second)) * m_lookSpeed;
+    // lastCursorPos = cursorPos;
 
-    //  if(glfwGetKey(window, m_keys.lookRight) == GLFW_PRESS)
-    //    rotate.y += rotationY;
-    //  if(glfwGetKey(window, m_keys.lookLeft) == GLFW_PRESS)
-    //    rotate.y -= rotationY;
-    //  if(glfwGetKey(window, m_keys.lookUp) == GLFW_PRESS)
-    //    rotate.x += rotationX;
-    //  if(glfwGetKey(window, m_keys.lookDown) == GLFW_PRESS)
-    //    rotate.x -= rotationX;
+     if(glfwGetKey(m_window, m_keys.lookRight) == GLFW_PRESS)
+       rotate.y += m_lookSpeed;
+     if(glfwGetKey(m_window, m_keys.lookLeft) == GLFW_PRESS)
+       rotate.y -= m_lookSpeed;
+     if(glfwGetKey(m_window, m_keys.lookUp) == GLFW_PRESS)
+       rotate.x += m_lookSpeed;
+     if(glfwGetKey(m_window, m_keys.lookDown) == GLFW_PRESS)
+       rotate.x -= m_lookSpeed;
 
     // Rotate only when 'rotate' is a non-zero vector. the 'dot(r, r) > 0' is just a way to check for that
     auto& transform{m_ecs.getComponent<cmp::Transform3D>(cameraEntity)};

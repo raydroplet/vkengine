@@ -20,10 +20,10 @@ namespace vke
       int moveUp{GLFW_KEY_SPACE};
       int moveDown{GLFW_KEY_LEFT_SHIFT};
 
-      int lookLeft{GLFW_KEY_J};
-      int lookRight{GLFW_KEY_SEMICOLON};
-      int lookUp{GLFW_KEY_L};
-      int lookDown{GLFW_KEY_K};
+      int lookLeft{GLFW_KEY_LEFT};
+      int lookRight{GLFW_KEY_RIGHT};
+      int lookUp{GLFW_KEY_UP};
+      int lookDown{GLFW_KEY_DOWN};
     };
 
   public:
@@ -38,7 +38,7 @@ namespace vke
     Coordinator& m_ecs;
     KeyMappings m_keys{};
     float m_moveSpeed{1.25f};
-    float m_lookSpeed{0.150f};
+    float m_lookSpeed{1.000f};
     std::pair<double, double> lastCursorPos{};
   };
 }; // namespace vke
