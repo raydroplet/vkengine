@@ -140,7 +140,7 @@ namespace vke
   void Swapchain::chooseExtent()
   {
     const auto& capabilities = m_details.capabilities;
-    if(capabilities.currentExtent.width /*!=*/ == UINT32_MAX) {
+    if(capabilities.currentExtent.width /*==*/ != UINT32_MAX) {
       m_info.extent = capabilities.currentExtent;
     } else {
       int width, height;

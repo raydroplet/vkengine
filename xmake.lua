@@ -6,7 +6,8 @@ set_languages "c++20"
 set_defaultmode "debug"
 set_policy("build.warning", true)
 
-add_requires("vulkansdk", "glfw", "glm", "tinyobjloader")
+add_requires("vulkansdk", "glm", "tinyobjloader")
+add_requires("glfw", { system = false })
 add_requires("glslang", { configs = { binaryonly = true } })
 
 add_rules("mode.release", "mode.debug")
@@ -49,7 +50,7 @@ rule("shader_compile")
     end)
 
 target "shaders"
-  set_kind "phony"
+  set_kind "shared"
   add_rules("shader_compile")
   add_files("shaders/*.vert", "shaders/*.frag")
   add_packages "glslang"

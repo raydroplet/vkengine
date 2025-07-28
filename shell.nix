@@ -1,10 +1,18 @@
 with import <nixpkgs> {};
 stdenv.mkDerivation {
-  name = "env";
+  name = "vkengine-env";
   nativeBuildInputs = [ pkg-config ];
   buildInputs = [
-    # xwayland
+    xwayland
+    xorg.libXext
+    xorg.libXrender
+    xorg.libXfixes
+    xorg.libXrandr
+    xorg.libXinerama
+    xorg.libXcursor
+    xorg.libXi
     # libxkbcommon
+    xmake
     glfw
     shaderc
     vulkan-headers
