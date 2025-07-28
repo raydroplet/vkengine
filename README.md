@@ -8,26 +8,26 @@ A simple 3D rendering engine built from the ground up using the Vulkan 1.0 API. 
 
 ## Features
 
-* **Modern Graphics:** Renders 3D scenes using the explicit, low-level **Vulkan API**.
-* **Advanced Architecture:**
-    * A complete **Entity-Component-System (ECS)** implementation (`vke::Coordinator`) for flexible and decoupled scene management.
-    * A template-based **event system** (`vke::EventRelayer`) for decoupled communication, handling events like window resizing and pipeline invalidation.
-    * A custom `multilist` data structure, block-allocated component storage.
-* **Resource Management:**
-    * Custom memory allocator (`vke::MemAllocator`) for efficient Vulkan buffer and image management.
-    * Model manager (`vke::ModelManager`) for loading and instantiating shared `.obj` 3D models using **tinyobjloader**.
-    * Descriptor set abstraction (`vke::DescriptorPool`, `vke::DescriptorWriter`) to simplify shader resource binding.
-* **Rendering Pipeline:**
-    * Clean, high-level abstractions for core Vulkan objects like `Device`, `Swapchain`, `Pipeline`, and `Buffer`.
-    * A global Uniform Buffer Object (UBO) for passing camera matrices and lighting data (ambient + single point light) to shaders.
-    * System-based rendering, with distinct systems for rendering models (`RenderSystem`) and light representations (`PointLightSystem`).
-* **User Interaction:** A first-person camera controller (`vke::KeyboardInput`) for navigating the scene.
+### Graphics & Rendering
+- **Vulkan API**: Low-level rendering with predictable performance and fine-grained GPU control
+- **3D Model Loading:** `.obj` file support with automatic buffer generation via **tinyobjloader**
+- **Lighting System:** Ambient + point light rendering with proper normal calculations
 
-## Dependencies
-* **Vulkan SDK:** [https://vulkan.lunarg.com/](https://vulkan.lunarg.com/)
-* **GLFW:** For windowing and input handling.
-* **GLM:** For C++ mathematics (vectors, matrices).
-* **tinyobjloader:** For parsing `.obj` model files.
+### Architecture
+- **Entity-Component-System:** Custom ECS implementation (`vke::Coordinator`) for flexible scene management
+- **Event System:** Template-based event handling for window resizing, pipeline recreation, and input processing
+
+### Resource Management
+- **Memory Allocator:** Custom Vulkan memory management with automatic allocation and alignment
+- **Asset Sharing:** Centralized model manager for efficient resource reuse across entities
+- **Descriptor Abstractions:** Simplified shader resource binding with type-safe updates
+
+### Vulkan Abstractions
+- **High-Level Wrappers:** Clean C++ abstractions for `Device`, `Swapchain`, `Pipeline`, and `Buffer`
+- **Automatic Synchronization:** Proper frame-in-flight handling with semaphores and fences
+
+### User Interaction
+- **First-Person Camera:** WASD movement with arrow key look controls and configurable speeds
 
 ## Building the Project
 Before building the project, be sure you have the following installed on your system:
@@ -56,7 +56,7 @@ Run the Application:
 - **Move Up/Down**: `Spacebar`, `Left Shift`
 - **Look Up/Down/Left/Right**: `Up`, `Down`, `Left`, `Right` arrow keys
 
-## Special Acknowledgments
+## Acknowledgments
 - [Vulkan Tutorial](https://vulkan-tutorial.com/): Vulkan API explanation and usage
 - [Brenda Galea](https://www.youtube.com/@BrendanGalea): Engine architecture and avanced features
 <!--
