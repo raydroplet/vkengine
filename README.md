@@ -1,8 +1,9 @@
-
-<img src="https://github.com/raydroplet/vkengine/blob/main/etc/demo.gif?raw=true" />
-
 # VKEngine
+
 A simple 3D rendering engine built from the ground up using the Vulkan 1.0 API. It serves as a learning tool and a base for building more complex graphics applications.
+
+<img src="https://github.com/raydroplet/vkengine/blob/main/etc/demo.gif?raw=true" style="width:500px;" />
+
 
 ## Building the Project
 Before building the project, be sure you have the following installed on your system:
