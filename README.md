@@ -1,33 +1,8 @@
 
 <img src="https://github.com/raydroplet/vkengine/blob/main/etc/demo.gif?raw=true" />
 
-> **⚠ Warning:** This repository contains a minimal Vulkan engine intended for learning, prototyping, and demonstration purposes. It is not optimized for production or full-scale game development.
-
 # VKEngine
 A simple 3D rendering engine built from the ground up using the Vulkan 1.0 API. It serves as a learning tool and a base for building more complex graphics applications.
-
-## Features
-
-### Graphics & Rendering
-- **Vulkan API**: Low-level rendering with predictable performance and fine-grained GPU control
-- **3D Model Loading:** `.obj` file support with automatic buffer generation via **tinyobjloader**
-- **Lighting System:** Ambient + point light rendering with proper normal calculations
-
-### Architecture
-- **Entity-Component-System:** Custom ECS implementation (`vke::Coordinator`) for flexible scene management
-- **Event System:** Template-based event handling for window resizing, pipeline recreation, and input processing
-
-### Resource Management
-- **Memory Allocator:** Custom Vulkan memory management with automatic allocation and alignment
-- **Asset Sharing:** Centralized model manager for efficient resource reuse across entities
-- **Descriptor Abstractions:** Simplified shader resource binding with type-safe updates
-
-### Vulkan Abstractions
-- **High-Level Wrappers:** Clean C++ abstractions for `Device`, `Swapchain`, `Pipeline`, and `Buffer`
-- **Automatic Synchronization:** Proper frame-in-flight handling with semaphores and fences
-
-### User Interaction
-- **First-Person Camera:** WASD movement with arrow key look controls and configurable speeds
 
 ## Building the Project
 Before building the project, be sure you have the following installed on your system:
