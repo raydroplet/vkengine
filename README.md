@@ -34,7 +34,7 @@ Run the Application:
 
 ## Acknowledgments
 - [Vulkan Tutorial](https://vulkan-tutorial.com/): Vulkan API explanation and usage
-- [Brenda Galea](https://www.youtube.com/@BrendanGalea): Engine architecture and avanced features
+- [Brenda Galea](https://www.youtube.com/@BrendanGalea): Engine architecture and advanced features
 <!--
 - [Modern 3D Graphics Programming](https://paroj.github.io/gltut/)
 - [Vulkan Perspective Matrix](https://www.vincentparizet.com/blog/posts/vulkan_perspective_matrix/):
