@@ -46,7 +46,8 @@ namespace vke
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
     if(enableValidationLayers) {
-      createInfo.enabledLayerCount = m_validationLayers.size();
+      /* deprecated */ // createInfo.enabledLayerCount = m_validationLayers.size();
+      createInfo.enabledLayerCount = 0;
       createInfo.ppEnabledLayerNames = m_validationLayers.data();
       populateDebugMessengerCreateInfo(debugMessengerCreateInfo);
       createInfo.pNext = static_cast<VkDebugUtilsMessengerCreateInfoEXT*>(&debugMessengerCreateInfo);
@@ -258,8 +259,10 @@ namespace vke
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.queueCreateInfoCount = queueCreateInfos.size();
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
-    /*deprecated*/ createInfo.enabledLayerCount = m_validationLayers.size();
-    /*deprecated*/ createInfo.ppEnabledLayerNames = m_validationLayers.data();
+    // /*deprecated*/ createInfo.enabledLayerCount = m_validationLayers.size();
+    /*deprecated*/ createInfo.enabledLayerCount = 0;
+    // /*deprecated*/ createInfo.ppEnabledLayerNames = m_validationLayers.data();
+    /*deprecated*/ createInfo.ppEnabledLayerNames = 0;
     createInfo.enabledExtensionCount = m_deviceExtensions.size();
     createInfo.ppEnabledExtensionNames = m_deviceExtensions.data();
     createInfo.pEnabledFeatures = &features;

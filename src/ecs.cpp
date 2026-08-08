@@ -7,17 +7,18 @@ namespace vke
   //  SystemManager Coordinator::m_systemManager{};
 
   EntityManager::EntityManager(uint32_t entityCount) :
-      m_indexCount{entityCount}
+    m_indexCount{entityCount}
   {
-    m_signatures.reserve(m_indexCount);
+    m_signatures.resize(m_indexCount);
     generateIndexes();
   }
 
   void EntityManager::generateIndexes()
   {
     m_indexCount *= 2;
+    m_signatures.resize(m_indexCount);
     for(EntityID e = m_livingEntities; e < m_indexCount; ++e) {
-      m_availableEntities.push(e); // maybe could be better
+      m_availableEntities.push(e);
     }
   }
 
@@ -25,8 +26,7 @@ namespace vke
   {
     ////assert(mEntitiesCount < mIndexCount && "Invalid entity. Out of range");
     // if(m_livingEntities == m_indexCount)
-    if(m_availableEntities.empty())
-    {
+    if(m_availableEntities.empty()) {
       generateIndexes();
     }
 
@@ -74,8 +74,7 @@ namespace vke
     }
     */
 
-    for(const auto& pair : m_componentArrays)
-    {
+    for(const auto& pair : m_componentArrays) {
       const auto& componentArray = pair.second;
       componentArray->notifyEntityDestruction(entity);
     }
@@ -85,8 +84,7 @@ namespace vke
   {
     // Erase a destroyed entity from all system lists
     // mEntities is a set so no check needed
-    for(const auto& pair : m_systems)
-    {
+    for(const auto& pair : m_systems) {
       const auto& system = pair.second;
 
       system->m_entities.erase(entity);
@@ -96,18 +94,15 @@ namespace vke
   void SystemManager::notifyEntitySignatureChange(EntityID entity, const Signature& entitySignature)
   {
     // Notify each system that an entity's signature changed
-    for(const auto& [id, system] : m_systems)
-    {
+    for(const auto& [id, system] : m_systems) {
       Signature systemSignature = m_signatures[id];
 
       // Entity signature matches system signature - insert into set
-      if((entitySignature & systemSignature) == systemSignature)
-      {
+      if((entitySignature & systemSignature) == systemSignature) {
         system->m_entities.insert(entity);
       }
       // Entity signature does not match system signature - erase from set
-      else
-      {
+      else {
         system->m_entities.erase(entity);
       }
     }
@@ -120,8 +115,7 @@ namespace vke
 
   void Coordinator::destroyEntity(EntityID e)
   {
-    if(e != std::numeric_limits<EntityID>::max())
-    {
+    if(e != std::numeric_limits<EntityID>::max()) {
       m_entityManager.destroyEntity(e);
       m_componentManager.notifyEntityDestruction(e);
       m_systemManager.notifyEntityDestruction(e);
